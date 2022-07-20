@@ -100,7 +100,7 @@ static void VerifyTargetPickup(void);
 #define	JUMP_DELTA					2700.0f
 #define	JUMP_JET_ACCELERATION		2500.0f
 #define	JUMP_JET_ACCELERATION_GIANT	(JUMP_JET_ACCELERATION * .5f)
-#define	JUMP_JET_DECELERATION		2500.0f
+#define	JUMP_JET_DECELERATION		0
 
 #define	DELTA_SUBDIV			30.0f				// smaller == more subdivisions per frame
 // Source port note: DELTA_SUBDIV was originally 15. At 60 fps, that value caused hiccups in the player's
@@ -331,12 +331,9 @@ void MovePlayer_Robot(ObjNode *theNode)
 	myMoveTable[theNode->Skeleton->AnimNum](theNode);
 
 
-		/* SEE IF SHOULD FREEZE CAMERA */
+		/* DON'T FREEZE CAMERA */
 
-	if (theNode->Skeleton->AnimNum == PLAYER_ANIM_JUMPJET)		// dont move camera from during jump-jet
-		gFreezeCameraFromXZ = true;
-	else
-		gFreezeCameraFromXZ = false;
+	gFreezeCameraFromXZ = false;
 }
 
 
@@ -979,12 +976,20 @@ static void MovePlayerRobot_JumpJet(ObjNode *theNode)
 	}
 			/* SEE IF DONE WITH JUMP-JET ANIM */
 	else
-	if (theNode->Skeleton->AnimHasStopped || GetNewNeedState(kNeed_Jump))
+	if (GetNewNeedState(kNeed_Jump))
 	{
 		MorphToSkeletonAnim(theNode->Skeleton, PLAYER_ANIM_FALL, 4.0);		// make fall anim
 	}
-
-
+	else
+	if (GetNewNeedState(kNeed_NextWeapon))
+	{
+		gPlayerInfo.jumpJetSpeed += 500.0f;
+	}
+	else
+	if (GetNewNeedState(kNeed_PrevWeapon))
+	{
+		gPlayerInfo.jumpJetSpeed -= 500.0f;
+	}
 
 			/* UPDATE IT */
 
@@ -2182,6 +2187,7 @@ int					numPasses,pass;
 				/* CALC TURNING */
 
 	theNode->Rot.y -= gPlayerInfo.analogControlX * 1.5f * fps;
+	theNode->Rot.x += gPlayerInfo.analogControlZ * 0.75f * fps;
 
 
 		/* CALC MOTION VECTOR BASED ON AIM OF JUMP-JET ANIM */
