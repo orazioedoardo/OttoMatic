@@ -1101,9 +1101,9 @@ static Boolean DoMainMenuControl(void)
 
 	if (gSaturn)
 	{
-			/* SPIN LEFT */
+			/* SPIN RIGHT */
 
-		if (GetNewNeedState(kNeed_UILeft) || GetNewNeedState(kNeed_UINext))
+		if (GetNewNeedState(kNeed_UIRight) || GetNewNeedState(kNeed_UIPrev))
 		{
 			PlayEffect(EFFECT_MENUCHANGE);
 			gTargetRot -= PI2 / (float)NUM_SELECTIONS;
@@ -1112,10 +1112,10 @@ static Boolean DoMainMenuControl(void)
 				gSelection = NUM_SELECTIONS-1;
 			gFadeInIconString = false;
 		}
-				/* SPIN RIGHT */
+				/* SPIN LEFT */
 
 		else
-		if (GetNewNeedState(kNeed_UIRight) || GetNewNeedState(kNeed_UIPrev))
+		if (GetNewNeedState(kNeed_UILeft) || GetNewNeedState(kNeed_UINext))
 		{
 			PlayEffect(EFFECT_MENUCHANGE);
 			gTargetRot += PI2 / (float)NUM_SELECTIONS;
