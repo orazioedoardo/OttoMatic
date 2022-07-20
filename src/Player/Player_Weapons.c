@@ -116,9 +116,29 @@ int	i;
 
 			/* ALWAYS HAS FIST AS WEAPON */
 
-	gPlayerInfo.weaponInventory[0].type = WEAPON_TYPE_FIST;
-	gPlayerInfo.weaponInventory[0].quantity = 99;
 	gPlayerInfo.currentWeaponType = WEAPON_TYPE_FIST;
+
+	gPlayerInfo.weaponInventory[0].type = WEAPON_TYPE_FIST;
+	gPlayerInfo.weaponInventory[0].quantity = 50;
+
+	gPlayerInfo.weaponInventory[1].type = WEAPON_TYPE_SUPERNOVA;
+	gPlayerInfo.weaponInventory[1].quantity = 50;
+
+	gPlayerInfo.weaponInventory[2].type = WEAPON_TYPE_STUNPULSE;
+	gPlayerInfo.weaponInventory[2].quantity = 50;
+
+	gPlayerInfo.weaponInventory[3].type = WEAPON_TYPE_FREEZE;
+	gPlayerInfo.weaponInventory[3].quantity = 50;
+
+	gPlayerInfo.weaponInventory[4].type = WEAPON_TYPE_FLAME;
+	gPlayerInfo.weaponInventory[4].quantity = 50;
+
+	gPlayerInfo.weaponInventory[5].type = WEAPON_TYPE_FLARE;
+	gPlayerInfo.weaponInventory[5].quantity = 50;
+
+	gPlayerInfo.weaponInventory[6].type = WEAPON_TYPE_DART;
+	gPlayerInfo.weaponInventory[6].quantity = 50;
+
 	gPlayerInfo.holdingGun = false;
 }
 
@@ -305,8 +325,6 @@ static const short weaponToModel[] =
 		DoFatalAlert("DecWeaponQuantity: weapon not in inventory");
 
 	type = gPlayerInfo.currentWeaponType;						// get current weapon type
-
-	gPlayerInfo.weaponInventory[i].quantity--;					// decrement the inventory
 
 
 			/****************/

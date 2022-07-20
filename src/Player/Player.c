@@ -85,7 +85,7 @@ void InitPlayerInfo_Game(void)
 
 		gPlayerInfo.lives			= 4;
 		gPlayerInfo.health 			= 1.0;
-		gPlayerInfo.jumpJet 		= 0;
+		gPlayerInfo.jumpJet 		= 1.0;
 	}
 
 
@@ -133,11 +133,7 @@ void InitPlayersAtStartOfLevel(void)
 
 	gPlayerInfo.invincibilityTimer = 0;
 
-	if ((gLevelNum == LEVEL_NUM_BLOBBOSS) ||				// player still has full fuel on Blob Boss from prev level
-		(gLevelNum == LEVEL_NUM_JUNGLEBOSS))
-		gPlayerInfo.fuel = 1;
-	else
-		gPlayerInfo.fuel = 0;
+	gPlayerInfo.fuel = 1;
 
 	gPlayerInfo.autoAimTimer = 0;
 	gPlayerInfo.burnTimer = 0;
@@ -275,8 +271,6 @@ Boolean	killed = false;
 
 	if (gPlayerInfo.health < 0.0f)				// see if already dead
 		return(true);
-
-	gPlayerInfo.health -= damage;
 
 		/* SEE IF DEAD */
 

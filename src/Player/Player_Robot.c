@@ -2752,11 +2752,6 @@ Boolean		killed = false;
 						killed = PlayerLoseHealth(.5f * fps, PLAYER_DEATH_TYPE_EXPLODE);		// lose health
 						BurnFire(theNode, gCoord.x, gCoord.y, gCoord.z, true, PARTICLE_SObjType_Fire, 4.0, PARTICLE_FLAGS_ALLAIM);
 						break;
-
-						/* GOOD OLD ZAPPING H2O */
-				default:
-						if (!wasInWater)
-							PlayerEntersWater(theNode, patchNum);
 			}
 		}
 	}
@@ -2922,7 +2917,6 @@ static void StartJumpJet(ObjNode *theNode)
 		return;
 	}
 
-	gPlayerInfo.jumpJet -= .1f;						// dec fuel
 	if (gPlayerInfo.jumpJet < 0.0f)
 		gPlayerInfo.jumpJet = 0.0f;
 
