@@ -339,7 +339,7 @@ long		createdDirID;
 	if (iErr != noErr)
 		DoAlert("Warning: Cannot locate the Preferences folder.");
 
-	iErr = DirCreate(gPrefsFolderVRefNum,gPrefsFolderDirID,"OttoMatic",&createdDirID);		// make folder in there
+	iErr = DirCreate(gPrefsFolderVRefNum,gPrefsFolderDirID,"OttoMaticTricks",&createdDirID);		// make folder in there
 }
 
 

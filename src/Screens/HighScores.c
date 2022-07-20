@@ -59,7 +59,7 @@ static const float kCancelAutoAdvance = -1e7f;
 /*    VARIABLES            */
 /***************************/
 
-static const char*	gHighScoresFileName = ":OttoMatic:HighScores2";
+static const char*	gHighScoresFileName = ":OttoMaticTricks:HighScores2";
 
 HighScoreType	gHighScores[NUM_SCORES];
 

@@ -42,10 +42,10 @@ static inline void Blit16(
 #define	SKELETON_FILE_VERS_NUM	0x0110			// v1.1
 
 #define	SAVE_GAME_VERSION	0x0200		// 2.0
-#define SAVE_PATH_FORMAT ":OttoMatic:save_%02d.ottosave"
+#define SAVE_PATH_FORMAT ":OttoMaticTricks:save_%02d.ottosave"
 
 #define PREFS_HEADER_LENGTH 16
-#define PREFS_FILE_NAME ":OttoMatic:Preferences6"
+#define PREFS_FILE_NAME ":OttoMaticTricks:Preferences6"
 const char PREFS_HEADER_STRING[PREFS_HEADER_LENGTH+1] = "OttoMaticPrefs06";		// Bump this every time prefs struct changes -- note: this will reset user prefs
 
 
