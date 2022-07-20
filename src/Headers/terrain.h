@@ -49,7 +49,7 @@ enum
 #define	TERRAIN_SUPERTILE_UNIT_SIZE	(SUPERTILE_SIZE*TERRAIN_POLYGON_SIZE)			// world unit size of a supertile
 #define	TERRAIN_SUPERTILE_UNIT_SIZE_Frac (1.0f / TERRAIN_SUPERTILE_UNIT_SIZE)
 
-#define	SUPERTILE_ACTIVE_RANGE		9
+#define	SUPERTILE_ACTIVE_RANGE		6
 #define	SUPERTILE_ITEMRING_MARGIN	0												// # supertile margin for adding new items
 
 #define	SUPERTILE_DIST_WIDE			(SUPERTILE_ACTIVE_RANGE*2)
