@@ -96,9 +96,6 @@ short	id;
 
 	id = itemPtr->parm[0];
 
-	if (id >= 12)						// error check since there is a 12 <--> 13 pair of teleporters which we have no 3D model for (for 1.0.2 update)
-		return(true);
-
 			/************************/
 			/* MAKE TELEPORTER ARCH */
 			/************************/
@@ -133,11 +130,14 @@ short	id;
 			/* MAKE CONSOLE */
 			/****************/
 
-	gNewObjectDefinition.type 		= APOCALYPSE_ObjType_Console0 + newObj->DestinationID;
-	gNewObjectDefinition.slot++;
-	gNewObjectDefinition.moveCall 	= nil;
-	console = MakeNewDisplayGroupObject(&gNewObjectDefinition);
-
+	if (id >= 12) {		// Skip creating a sign for teleporters #12 and #13 that have no 3D model
+		console = nil;
+	} else {
+		gNewObjectDefinition.type 		= APOCALYPSE_ObjType_Console0 + newObj->DestinationID;
+		gNewObjectDefinition.slot++;
+		gNewObjectDefinition.moveCall 	= nil;
+		console = MakeNewDisplayGroupObject(&gNewObjectDefinition);
+	}
 
 	newObj->ChainNode = console;
 
@@ -200,7 +200,7 @@ int				i;
 		/* UPDATE ZAPS */
 		/***************/
 
-	zap1 = teleporter->ChainNode->ChainNode;			// 1st zap is chained off of console
+	zap1 = teleporter->ChainNode;			// 1st zap is chained off of console
 	if (zap1)
 	{
 		zap2 = zap1->ChainNode;
@@ -361,7 +361,7 @@ ObjNode	*zap1, *zap2;
 	zap1 = MakeNewDisplayGroupObject(&gNewObjectDefinition);
 
 	zap1->ColorFilter.a = .8;
-	teleporter->ChainNode->ChainNode = zap1;
+	teleporter->ChainNode = zap1;
 
 				/* ZAP 2 */
 
