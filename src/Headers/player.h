@@ -24,7 +24,7 @@
 #define	ZappedTimer		SpecialF[0]				// time to do zap anim
 #define	AccordianTimer	SpecialF[0]				// duration of accordian
 
-#define	PLAYER_COLLISION_CTYPE	(CTYPE_MISC|CTYPE_TRIGGER|CTYPE_FENCE|CTYPE_ENEMY|CTYPE_HURTME)
+#define	PLAYER_COLLISION_CTYPE	(CTYPE_MISC|CTYPE_TRIGGER|CTYPE_ENEMY|CTYPE_HURTME)
 
 enum
 {

@@ -1157,7 +1157,7 @@ float	fps = gFramesPerSecondFrac;
 
 			/* COLLISION */
 
-	HandleCollisions(theNode, CTYPE_MISC|CTYPE_TERRAIN|CTYPE_FENCE, -.6);
+	HandleCollisions(theNode, CTYPE_MISC|CTYPE_TERRAIN, -.6);
 	if (theNode->StatusBits & STATUS_BIT_ONGROUND)								// once on ground then stop
 	{
 		theNode->Rot.x = 0;
@@ -2141,14 +2141,6 @@ Boolean				killed = false;
 	gFramesPerSecond = oldFPS;										// restore real FPS values
 	gFramesPerSecondFrac = oldFPSFrac;
 
-
-				/*************************/
-				/* CHECK FENCE COLLISION */
-				/*************************/
-
-	DoFenceCollision(theNode);
-
-
 				/* CHECK FLOOR */
 
 	terrainY = GetTerrainY(gCoord.x, gCoord.z);
@@ -2275,12 +2267,6 @@ int					numPasses,pass;
 
 	gFramesPerSecond = oldFPS;										// restore real FPS values
 	gFramesPerSecondFrac = oldFPSFrac;
-
-				/*************************/
-				/* CHECK FENCE COLLISION */
-				/*************************/
-
-	DoFenceCollision(theNode);
 
 	gPlayerInfo.distToFloor = gCoord.y + theNode->BBox.min.y - GetTerrainY(gCoord.x, gCoord.z);
 
@@ -2454,13 +2440,9 @@ float				oldRadius;
 		hit = true;
 	}
 
-				/*************************/
-				/* CHECK FENCE COLLISION */
-				/*************************/
-
 	oldRadius = theNode->BoundingSphereRadius;								// tweak the radius for this
 	theNode->BoundingSphereRadius =  gSoapBubble->BBox.max.x;
-	if (DoFenceCollision(theNode) || hit)
+	if (hit)
 	{
 		PopSoapBubble(gSoapBubble);
 	}
@@ -3291,7 +3273,7 @@ OGLMatrix3x3	m;
 
 			/* SEE IF HIT SOLID OBJECT HARD */
 
-	if (HandleCollisions(player, CTYPE_MISC, -.6) || DoFenceCollision(player))
+	if (HandleCollisions(player, CTYPE_MISC, -.6))
 	{
 		if (player->Speed2D > 500.0f)											// see if hit hard
 		{
