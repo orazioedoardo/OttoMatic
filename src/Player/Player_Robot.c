@@ -80,13 +80,13 @@ static void VerifyTargetPickup(void);
 
 #define	MAX_BUBBLE_SPEED		400.0f
 
-#define	PLAYER_NORMAL_MAX_SPEED	900.0f
+#define	PLAYER_NORMAL_MAX_SPEED	1350.0f
 
 #define	PLAYER_SLOPE_ACCEL		3000.0f
 
 #define	PLAYER_AIR_FRICTION		400.0f
-#define	PLAYER_DEFAULT_FRICTION	1200.0f
-#define	PLAYER_HEAVY_FRICTION	2700.0f
+#define	PLAYER_DEFAULT_FRICTION	1800.0f
+#define	PLAYER_HEAVY_FRICTION	4050.0f
 
 #define DEBUG_PLAYER_VAPOR		0
 #if DEBUG_PLAYER_VAPOR
@@ -97,10 +97,10 @@ static void VerifyTargetPickup(void);
 	#define PLAYER_VAPOR_ALPHA		0.2f
 #endif
 
-#define	JUMP_DELTA					1800.0f
-#define	JUMP_JET_ACCELERATION		2000.0f
+#define	JUMP_DELTA					2700.0f
+#define	JUMP_JET_ACCELERATION		2500.0f
 #define	JUMP_JET_ACCELERATION_GIANT	(JUMP_JET_ACCELERATION * .5f)
-#define	JUMP_JET_DECELERATION		2000.0f
+#define	JUMP_JET_DECELERATION		2500.0f
 
 #define	DELTA_SUBDIV			30.0f				// smaller == more subdivisions per frame
 // Source port note: DELTA_SUBDIV was originally 15. At 60 fps, that value caused hiccups in the player's

@@ -286,7 +286,7 @@ static void ResetCameraSettings(void)
 
 	gCameraUserRotY = 0;
 
-	gCameraFromAccel 	= 4.5;
+	gCameraFromAccel 	= 9.0;
 	gCameraFromAccelY	= 1.5;
 
 
@@ -308,7 +308,7 @@ static void ResetCameraSettings(void)
 	}
 	else
 	{
-		gCameraLookAtAccel 	= 15;
+		gCameraLookAtAccel 	= 300;
 
 		gCameraHeightFactor = 0.2;
 		gCameraLookAtYOff 	= DEFAULT_CAMERA_YOFF;
