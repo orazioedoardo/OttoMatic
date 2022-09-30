@@ -72,7 +72,6 @@ Str255		numStr;
 
 void DoAlert(const char* s)
 {
-	GammaOn();
 	Enter2D();
 
 	printf("OTTO MATIC Alert: %s\n", s);
@@ -87,7 +86,6 @@ void DoAlert(const char* s)
 
 void DoFatalAlert(const char* s)
 {
-	GammaOn();
 	Enter2D();
 
 	printf("OTTO MATIC Fatal Alert: %s\n", s);
@@ -102,7 +100,6 @@ void DoFatalAlert(const char* s)
 
 void DoAssert(const char* msg, const char* file, int line)
 {
-	GammaOn();
 	Enter2D();
 	printf("GAME ASSERTION FAILED: %s - %s:%d\n", msg, file, line);
 	static char alertbuf[1024];
@@ -130,7 +127,9 @@ static Boolean	beenHere = false;
 		DisposeAllSpriteGroups();						// nuke all sprites
 
 		if (gGameViewInfoPtr)							// see if need to dispose this
-			OGL_DisposeWindowSetup(&gGameViewInfoPtr);
+			OGL_DisposeWindowSetup();
+
+		OGL_Shutdown();
 
 		TextMesh_DisposeMetrics();
 	}
@@ -495,10 +494,10 @@ int32_t	theLong = *longPtr;
 
 #if __LITTLE_ENDIAN__
 
-	Byte	b1 = theLong & 0xff;
-	Byte	b2 = (theLong & 0xff00) >> 8;
-	Byte	b3 = (theLong & 0xff0000) >> 16;
-	Byte	b4 = (theLong & 0xff000000) >> 24;
+	int32_t	b1 = theLong & 0xff;
+	int32_t	b2 = (theLong & 0xff00) >> 8;
+	int32_t	b3 = (theLong & 0xff0000) >> 16;
+	int32_t	b4 = (theLong & 0xff000000) >> 24;
 
 	theLong = (b1 << 24) | (b2 << 16) | (b3 << 8) | b4;
 
@@ -516,10 +515,10 @@ uint32_t	theLong = *longPtr;
 
 #if __LITTLE_ENDIAN__
 
-	Byte	b1 = theLong & 0xff;
-	Byte	b2 = (theLong & 0xff00) >> 8;
-	Byte	b3 = (theLong & 0xff0000) >> 16;
-	Byte	b4 = (theLong & 0xff000000) >> 24;
+	uint32_t	b1 = theLong & 0xff;
+	uint32_t	b2 = (theLong & 0xff00) >> 8;
+	uint32_t	b3 = (theLong & 0xff0000) >> 16;
+	uint32_t	b4 = (theLong & 0xff000000) >> 24;
 
 	theLong = (b1 << 24) | (b2 << 16) | (b3 << 8) | b4;
 

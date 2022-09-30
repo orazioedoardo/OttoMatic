@@ -2,7 +2,10 @@
 
 		/* MY BUILD OPTIONS */
 
-#define __LITTLE_ENDIAN__	1
+// Default to little-endian
+#if !defined(__BIG_ENDIAN__) && !defined(__LITTLE_ENDIAN__)
+	#define __LITTLE_ENDIAN__ 1
+#endif
 
 #if _MSC_VER
 	#define _Static_assert static_assert
@@ -60,7 +63,6 @@ extern "C"
 #include "fences.h"
 #include "miscscreens.h"
 #include "objects.h"
-#include "mainmenu.h"
 #include "lzss.h"
 #include "3dmath.h"
 #include "ogl_functions.h"

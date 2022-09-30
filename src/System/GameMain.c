@@ -216,7 +216,6 @@ static void PlayGame(void)
 			/* CLEANUP LEVEL */
 
 		MyFlushEvents();
-		GammaFadeOut();
 		CleanupLevel();
 
 
@@ -297,7 +296,7 @@ static void PlayArea(void)
 			/* DRAW IT ALL */
 
 
-		OGL_DrawScene(gGameViewInfoPtr,DrawArea);
+		OGL_DrawScene(DrawObjects);
 
 
 
@@ -347,33 +346,28 @@ static void PlayArea(void)
 	}
 
 
+	OGL_FadeOutScene(DrawObjects, PausedUpdateCallback);
+
+
 	CaptureMouse(false);
 
 }
 
 
-/****************** DRAW AREA *******************************/
+/****************** DRAW AREA EXTRA STUFF *******************************/
 
-void DrawArea(OGLSetupOutputType *setupInfo)
+static void DrawAreaExtraStuff(ObjNode* theNode)
 {
-		/* DRAW OBJECTS & TERAIN */
-
-	DrawObjects(setupInfo);												// draw objNodes which includes fences, terrain, etc.
-
-	// Don't draw stuff on top of the UI if the game is paused
-	if (gGamePaused)
-		return;
+	(void) theNode;
 
 			/* DRAW MISC */
 
-	DrawShards(setupInfo);												// draw shards
-	DrawVaporTrails(setupInfo);											// draw vapor trails
-	DrawSparkles(setupInfo);											// draw light sparkles
-	DrawInfobar(setupInfo);												// draw infobar last
-	DrawLensFlare(setupInfo);											// draw lens flare
-	DrawDeathExit(setupInfo);											// draw death exit stuff
-
-
+	DrawShards();												// draw shards
+	DrawVaporTrails();											// draw vapor trails
+	if (!gGamePaused)
+		DrawInfobar();												// draw infobar last
+	DrawLensFlare();											// draw lens flare
+	DrawDeathExit();											// draw death exit stuff
 }
 
 
@@ -708,7 +702,7 @@ DeformationType		defData;
 
 
 
-	OGL_SetupWindow(&viewDef, &gGameViewInfoPtr);
+	OGL_SetupWindow(&viewDef);
 
 
 			/**********************/
@@ -760,19 +754,32 @@ DeformationType		defData;
 			// NOTE: only call this *after* draw context is created!
 			//
 
-	LoadLevelArt(gGameViewInfoPtr);
-	InitInfobar(gGameViewInfoPtr);
+	LoadLevelArt();
+	InitInfobar();
 	gAlienSaucer = nil;
 
 			/* INIT OTHER MANAGERS */
 
 	InitEnemyManager();
 	InitHumans();
-	InitEffects(gGameViewInfoPtr);
+	InitEffects();
 	InitVaporTrails();
 	InitSparkles();
 	InitItemsManager();
-	InitSky(gGameViewInfoPtr);
+	InitSky();
+
+
+			/* DRAW SHARDS, THE INFOBAR, ETC. AFTER ALL GAMEPLAY OBJECTS */
+
+	NewObjectDefinitionType drawExtraDef =
+	{
+		.scale = 1,
+		.genre = CUSTOM_GENRE,
+		.flags = STATUS_BIT_DONTCULL,
+		.slot = DRAWEXTRA_SLOT,
+		.drawCall = DrawAreaExtraStuff
+	};
+	MakeNewObject(&drawExtraDef);
 
 
 
@@ -883,8 +890,6 @@ DeformationType		defData;
 	InitCamera();
 
 	SDL_ShowCursor(0);							// do this again to be sure!
-
-	GammaFadeOut();
  }
 
 
@@ -911,7 +916,7 @@ static void CleanupLevel(void)
 
 	DisposeSoundBank(kLevelSoundBanks[gLevelNum]);
 
-	OGL_DisposeWindowSetup(&gGameViewInfoPtr);	// do this last!
+	OGL_DisposeWindowSetup();	// do this last!
 
 	Pomme_FlushPtrTracking(true);
 
@@ -967,7 +972,7 @@ static void CheckBootCheats(void)
 /************************************************************/
 
 
-int GameMain(void)
+void GameMain(void)
 {
 unsigned long	someLong;
 

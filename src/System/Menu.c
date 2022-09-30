@@ -392,8 +392,15 @@ static void NavigateSettingEntriesMouseHover(void)
 	int mxRaw, myRaw;
 	SDL_GetMouseState(&mxRaw, &myRaw);
 
-	float mx = (mxRaw - gGameWindowWidth/2.0f) * g2DLogicalWidth / gGameWindowWidth;
-	float my = (myRaw - gGameWindowHeight/2.0f) * g2DLogicalHeight / gGameWindowHeight;
+	// On macOS, the mouse position is relative to the window's "point size" on Retina screens.
+	int windowW = 1;
+	int windowH = 1;
+	SDL_GetWindowSize(gSDLWindow, &windowW, &windowH);
+	float dpiScaleX = (float) gGameWindowWidth / (float) windowW;		// gGameWindowWidth is in actual pixels
+	float dpiScaleY = (float) gGameWindowHeight / (float) windowH;		// gGameWindowHeight is in actual pixels
+
+	float mx = (mxRaw*dpiScaleX - gGameWindowWidth*0.5f) * g2DLogicalWidth / gGameWindowWidth;
+	float my = (myRaw*dpiScaleY - gGameWindowHeight*0.5f) * g2DLogicalHeight / gGameWindowHeight;
 
 	gMouseHoverValidRow = false;
 	gMouseHoverColumn = -1;
@@ -902,7 +909,7 @@ static ObjNode* MakeDarkenPane(void)
 	gNewObjectDefinition.genre		= CUSTOM_GENRE;
 	gNewObjectDefinition.flags		= STATUS_BIT_NOZWRITES|STATUS_BIT_NOLIGHTING|STATUS_BIT_NOFOG|STATUS_BIT_NOTEXTUREWRAP|
 										STATUS_BIT_KEEPBACKFACES|STATUS_BIT_MOVEINPAUSE;
-	gNewObjectDefinition.slot		= SLOT_OF_DUMB+100-1;
+	gNewObjectDefinition.slot		= MENU_SLOT-1;
 	gNewObjectDefinition.scale		= 1;
 	gNewObjectDefinition.moveCall 	= nil;
 
@@ -1068,7 +1075,7 @@ static void LayOutMenu(const MenuItem* menu)
 
 	memset(&gNewObjectDefinition, 0, sizeof(gNewObjectDefinition));
 	gNewObjectDefinition.scale		= gMenuStyle->standardScale;
-	gNewObjectDefinition.slot		= SLOT_OF_DUMB+100;
+	gNewObjectDefinition.slot		= MENU_SLOT;
 
 	float totalHeight = 0;
 	for (int row = 0; menu[row].type != kMenuItem_END_SENTINEL; row++)
@@ -1222,7 +1229,7 @@ int StartMenu(
 		const MenuItem* menu,
 		const MenuStyle* style,
 		void (*updateRoutine)(void),
-		void (*backgroundDrawRoutine)(OGLSetupOutputType *))
+		void (*backgroundDrawRoutine)(void))
 {
 	int cursorStateBeforeMenu = SDL_ShowCursor(-1);
 	gStandardCursor = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
@@ -1317,7 +1324,7 @@ int StartMenu(
 		MoveObjects();
 		if (updateRoutine)
 			updateRoutine();
-		OGL_DrawScene(gGameViewInfoPtr, backgroundDrawRoutine);
+		OGL_DrawScene(backgroundDrawRoutine);
 	}
 
 

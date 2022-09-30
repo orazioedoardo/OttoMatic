@@ -15,7 +15,6 @@
 /*    PROTOTYPES            */
 /****************************/
 
-static void DrawIntroCallback(OGLSetupOutputType *info);
 static void SetupIntroScreen(void);
 static void FreeIntroScreen(void);
 static void CreateIntroSaucers(void);
@@ -120,7 +119,7 @@ float	oldTime,maxTime = 11.0f;
 		CalcFramesPerSecond();
 		UpdateInput();
 		MoveObjects();
-		OGL_DrawScene(gGameViewInfoPtr, DrawIntroCallback);
+		OGL_DrawScene(DrawObjects);
 
 		if (UserWantsOut())
 			break;
@@ -135,27 +134,25 @@ float	oldTime,maxTime = 11.0f;
 			MakeFadeEvent(false, 1.0);
 		}
 
-		if (gGammaFadePercent <= 0.0f)
+		if (gGammaFadeFrac <= 0.0f)
 			break;
 	}
 
 
 			/* CLEANUP */
 
-	GammaFadeOut();
+	if (gGammaFadeFrac > 0.0f)
+	{
+		float backupGamma = gGammaFadeFrac;
+		OGL_FadeOutScene(DrawObjects, NULL);
+		gGammaFadeFrac = backupGamma;
+	}
+
 	FreeIntroScreen();
 }
 
 
 /***************** DRAW INTRO CALLBACK *******************/
-
-static void DrawIntroCallback(OGLSetupOutputType *info)
-{
-			/* DRAW OBJECTS */
-
-	DrawObjects(info);
-	DrawSparkles(info);
-}
 
 
 static void MoveLevelName(ObjNode* theNode)
@@ -269,7 +266,7 @@ const Byte	cloud[] =
 
 
 
-	OGL_SetupWindow(&viewDef, &gGameViewInfoPtr);
+	OGL_SetupWindow(&viewDef);
 
 
 				/************/
@@ -280,19 +277,19 @@ const Byte	cloud[] =
 			/* LOAD SPRITES */
 
 	FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, ":Sprites:spheremap.sprites", &spec);
-	LoadSpriteFile(&spec, SPRITE_GROUP_SPHEREMAPS, gGameViewInfoPtr);
+	LoadSpriteFile(&spec, SPRITE_GROUP_SPHEREMAPS);
 
 			/* LOAD MODELS */
 
 	FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, ":Models:LevelIntro.bg3d", &spec);
-	ImportBG3D(&spec, MODEL_GROUP_LEVELINTRO, gGameViewInfoPtr);
+	ImportBG3D(&spec, MODEL_GROUP_LEVELINTRO);
 
 	BG3D_SphereMapGeomteryMaterial(MODEL_GROUP_LEVELINTRO, INTRO_ObjType_IceSaucer,
 								 	-1, MULTI_TEXTURE_COMBINE_ADD, SPHEREMAP_SObjType_Sea);
 
 
 	InitSparkles();
-	InitParticleSystem(gGameViewInfoPtr);
+	InitParticleSystem();
 
 
 			/**************/
@@ -485,7 +482,7 @@ static void FreeIntroScreen(void)
 	DisposeParticleSystem();
 	DisposeAllSpriteGroups();
 	DisposeAllBG3DContainers();
-	OGL_DisposeWindowSetup(&gGameViewInfoPtr);
+	OGL_DisposeWindowSetup();
 	Pomme_FlushPtrTracking(true);
 }
 
@@ -523,7 +520,7 @@ float	r;
 
 	if (topObj->Kind == 0)
 	{
-		OGL_UpdateCameraFromTo(gGameViewInfoPtr, &gGameViewInfoPtr->cameraPlacement.cameraLocation, &gCoord);
+		OGL_UpdateCameraFromTo(&gGameViewInfoPtr->cameraPlacement.cameraLocation, &gCoord);
 
 	}
 

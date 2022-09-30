@@ -10,16 +10,23 @@
 
 #define INVALID_NODE_FLAG	0xdeadbeef			// put into CType when node is deleted
 
-#define	TERRAIN_SLOT	1
-#define	PLAYER_SLOT		200
-#define	ENEMY_SLOT		(PLAYER_SLOT+10)
-#define	SLOT_OF_DUMB	3000
-#define	SPRITE_SLOT		(SLOT_OF_DUMB+100)
-#define	FENCE_SLOT		4
-#define	PARTICLE_SLOT	(SPRITE_SLOT-2)
-#define	WATER_SLOT		(PARTICLE_SLOT - 1)
-#define	HUMAN_SLOT		(SLOT_OF_DUMB-50)
-#define	DEBUGOVERLAY_SLOT	(0x7FFF)
+enum
+{
+	TERRAIN_SLOT		=     1,
+	FENCE_SLOT			=     4,
+	PLAYER_SLOT			=   200,
+	ENEMY_SLOT			=   210,
+	HUMAN_SLOT			=  2950,
+	SLOT_OF_DUMB		=  3000,
+	WATER_SLOT			=  3097,
+	PARTICLE_SLOT		=  3098,
+	SPARKLE_SLOT		=  3099,
+	SPRITE_SLOT			=  3100,
+	DRAWEXTRA_SLOT		=  5000,
+	MENU_SLOT			=  5100,
+	FADEPANE_SLOT		=  5200,
+	DEBUGOVERLAY_SLOT	= 32767,
+};
 
 enum
 {
@@ -46,7 +53,7 @@ enum
 extern	void InitObjectManager(void);
 extern	ObjNode	*MakeNewObject(NewObjectDefinitionType *newObjDef);
 extern	void MoveObjects(void);
-void DrawObjects(OGLSetupOutputType *setupInfo);
+void DrawObjects(void);
 
 extern	void DeleteAllObjects(void);
 extern	void DeleteObject(ObjNode	*theNode);
