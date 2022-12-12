@@ -297,7 +297,7 @@ const Byte	cloud[] =
 			/**************/
 
 	gNewObjectDefinition.scale 	    = 1.00f;
-	gNewObjectDefinition.coord.x 	= -310;
+	gNewObjectDefinition.coord.x 	= -405;
 	gNewObjectDefinition.coord.y 	= 200;
 	gNewObjectDefinition.coord.z 	= 0.0f;
 	gNewObjectDefinition.moveCall	= MoveLevelName;
