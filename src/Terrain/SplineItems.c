@@ -32,9 +32,9 @@ static Boolean NilPrime(long splineNum, SplineItemType *itemPtr);
 /**********************/
 
 SplineDefType	**gSplineList = nil;
-long			gNumSplines = 0;
+int				gNumSplines = 0;
 
-static long		gNumSplineObjects = 0;
+static int		gNumSplineObjects = 0;
 static ObjNode	*gSplineObjectList[MAX_SPLINE_OBJECTS];
 
 
@@ -115,7 +115,7 @@ Boolean (*gSplineItemPrimeRoutines[MAX_SPLINE_ITEM_NUM+1])(long, SplineItemType 
 		NilPrime,							// 66:  crashed ship
 		NilPrime,							// 67:  chain reacting mine
 		NilPrime,							// 68:  rubble
-		NilPrime,							// 69:  teleporter map
+		NilPrime,							// 69:  teleporter map (UNUSED)
 		NilPrime,							// 70:  green steam
 		NilPrime,							// 71:  tentacle generator
 		NilPrime,							// 72:  pitcher plant boss
@@ -233,7 +233,7 @@ int GetCoordOnSpline(const SplineDefType* spline, float placement, float* x, flo
 	GAME_ASSERT(spline->numPoints > 0);
 
 	// Clamp placement before accessing array to avoid overrun
-	placement = GAME_CLAMP(placement, 0, MAX_PLACEMENT);
+	placement = ClampFloat(placement, 0, MAX_PLACEMENT);
 
 	float scaledPlacement = placement * numPoints;
 
@@ -250,8 +250,8 @@ int GetCoordOnSpline(const SplineDefType* spline, float placement, float* x, flo
 	float interpointFrac = scaledPlacement - (int)scaledPlacement;
 
 	// Lerp point1 -> point2
-	*x = point1->x * (1 - interpointFrac) + point2->x * interpointFrac;
-	*z = point1->z * (1 - interpointFrac) + point2->z * interpointFrac;
+	*x = LerpFloat(point1->x, point2->x, interpointFrac);
+	*z = LerpFloat(point1->z, point2->z, interpointFrac);
 
 	return index1;
 }
@@ -467,13 +467,13 @@ float IncreaseSplineIndex(ObjNode *theNode, float speed)
 	{
 		// Loop to start
 		placement -= 1.0f;
-		placement = GAME_CLAMP(placement, 0, MAX_PLACEMENT);
+		placement = ClampFloat(placement, 0, MAX_PLACEMENT);
 	}
 	else if (placement < 0)
 	{
 		// Loop to end
 		placement += 1.0f;
-		placement = GAME_CLAMP(placement, 0, MAX_PLACEMENT);
+		placement = ClampFloat(placement, 0, MAX_PLACEMENT);
 	}
 
 	theNode->SplinePlacement = placement;
@@ -851,7 +851,6 @@ void PatchSplineLoop(SplineDefType* spline)
 {
 	int numNubs = spline->numNubs;
 	SplinePointType* nubList = *spline->nubList;
-	int oldNumPoints = spline->numPoints;
 
 	int numWrapNubs = 3;		// wrap around for this many nubs
 	GAME_ASSERT(numNubs > numWrapNubs);
@@ -901,12 +900,13 @@ void PatchSplineLoop(SplineDefType* spline)
 #if _DEBUG
 		/* MAKE SURE NEW SPLINE HASN'T STRAYED TOO FAR FROM FILE VALUES */
 
+	int oldNumPoints = spline->numPoints;
 	GAME_ASSERT(abs(newNumPoints - oldNumPoints) <= 10);		// tolerate some wiggle room
 	// (note: level 3 will be especially bad here since I edited the nubs in the .ter.rsrc file)
 
 	int currentSpan = 0;
 	int currentSpanPoints = 0;
-	for (int p = 0; p < GAME_MIN(newNumPoints, oldNumPoints); p++)
+	for (int p = 0; p < MinInt(newNumPoints, oldNumPoints); p++)
 	{
 		float dx = (*spline->pointList)[p].x - (*newPointList)[p].x;
 		float dz = (*spline->pointList)[p].z - (*newPointList)[p].z;
@@ -936,6 +936,7 @@ void PatchSplineLoop(SplineDefType* spline)
 
 		/* CLEAN UP */
 
-	DisposePtr((Ptr) pointsPerSpan_wrapping);
+	SafeDisposePtr((Ptr) pointsPerSpan_wrapping);
+	SafeDisposePtr((Ptr) nubList_wrapping);
 }
 

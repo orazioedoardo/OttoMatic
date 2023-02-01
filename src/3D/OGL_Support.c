@@ -11,6 +11,7 @@
 /****************************/
 
 #include "game.h"
+#include "version.h"
 
 /****************************/
 /*    PROTOTYPES            */
@@ -43,7 +44,7 @@ static void	ConvertTextureToColorAnaglyph(void *imageMemory, short width, short 
 float					gAnaglyphFocallength	= 150.0f;
 float					gAnaglyphEyeSeparation 	= 40.0f;
 Byte					gAnaglyphPass;
-u_char					gAnaglyphGreyTable[255];
+uint8_t					gAnaglyphGreyTable[255];
 
 
 SDL_GLContext	gAGLContext = nil;
@@ -86,21 +87,27 @@ static ObjNode* gDebugText;
 
 void OGL_Boot(void)
 {
-short	i;
-float	f;
-
 		/* GENERATE ANAGLYPH GREY CONVERSION TABLE */
+
+#if 1
+	// TODO: "< 255" instead of "<= 255" on purpose?
+	for (int i = 0; i < 255; i++)
+	{
+		gAnaglyphGreyTable[i] = i;
+	}
+#else
 		//
 		// This makes an intensity curve to brighten things up, but sometimes
 		// it washes them out.
 		//
 
-	f = 0;
-	for (i = 0; i < 255; i++)
+	float f = 0;
+	for (int i = 0; i < 255; i++)
 	{
-		gAnaglyphGreyTable[i] = i; //sin(f) * 255.0f;
+		gAnaglyphGreyTable[i] = sin(f) * 255.0f;
 		f += (PI/2.0) / 255.0f;
 	}
+#endif
 
 
 		/* CREATE DRAW CONTEXT THAT WILL BE USED THROUGHOUT THE GAME */
@@ -196,7 +203,7 @@ void OGL_SetupWindow(OGLSetupInputType *setupDefPtr)
 	OGL_CreateLights(&setupDefPtr->lights);
 	OGL_CheckError();
 
-	SDL_GL_SetSwapInterval(gCommandLine.vsync);
+	SDL_GL_SetSwapInterval((signed char) gGamePrefs.vsync);
 
 
 
@@ -308,35 +315,32 @@ static void OGL_InitDrawContext(OGLViewDefType* viewDefPtr)
 			// The NTSC luminance standard where grayscale = .299r + .587g + .114b
 			//
 
-	if (gGamePrefs.anaglyph)
+	if (gGamePrefs.anaglyphMode == ANAGLYPH_COLOR)
 	{
-		if (gGamePrefs.anaglyphColor)
-		{
-			uint32_t	r,g,b;
+		uint32_t	r,g,b;
 
-			r = viewDefPtr->clearColor.r * 255.0f;
-			g = viewDefPtr->clearColor.g * 255.0f;
-			b = viewDefPtr->clearColor.b * 255.0f;
+		r = viewDefPtr->clearColor.r * 255.0f;
+		g = viewDefPtr->clearColor.g * 255.0f;
+		b = viewDefPtr->clearColor.b * 255.0f;
 
-			ColorBalanceRGBForAnaglyph(&r, &g, &b);
+		ColorBalanceRGBForAnaglyph(&r, &g, &b);
 
-			viewDefPtr->clearColor.r = (float)r / 255.0f;
-			viewDefPtr->clearColor.g = (float)g / 255.0f;
-			viewDefPtr->clearColor.b = (float)b / 255.0f;
+		viewDefPtr->clearColor.r = (float)r / 255.0f;
+		viewDefPtr->clearColor.g = (float)g / 255.0f;
+		viewDefPtr->clearColor.b = (float)b / 255.0f;
 
-		}
-		else
-		{
-			float	f;
+	}
+	else if (gGamePrefs.anaglyphMode == ANAGLYPH_MONO)
+	{
+		float	f;
 
-			f = viewDefPtr->clearColor.r * .299;
-			f += viewDefPtr->clearColor.g * .587;
-			f += viewDefPtr->clearColor.b * .114;
+		f = viewDefPtr->clearColor.r * .299;
+		f += viewDefPtr->clearColor.g * .587;
+		f += viewDefPtr->clearColor.b * .114;
 
-			viewDefPtr->clearColor.r =
-			viewDefPtr->clearColor.g =
-			viewDefPtr->clearColor.b = f;
-		}
+		viewDefPtr->clearColor.r =
+		viewDefPtr->clearColor.g =
+		viewDefPtr->clearColor.b = f;
 	}
 
 
@@ -408,7 +412,7 @@ OGLStyleDefType *styleDefPtr = &setupDefPtr->styles;
 		glFogf(GL_FOG_DENSITY, styleDefPtr->fogDensity);
 		glFogf(GL_FOG_START, styleDefPtr->fogStart);
 		glFogf(GL_FOG_END, styleDefPtr->fogEnd);
-		glFogfv(GL_FOG_COLOR, (float *)&setupDefPtr->view.clearColor);
+		glFogfv(GL_FOG_COLOR, &setupDefPtr->view.clearColor.r);
 		glEnable(GL_FOG);
 	}
 	else
@@ -513,7 +517,7 @@ void OGL_DrawScene(void (*drawRoutine)(void))
 
 			/* INIT SOME STUFF */
 
-	if (gGamePrefs.anaglyph)
+	if (gGamePrefs.anaglyphMode != ANAGLYPH_OFF)
 	{
 		gAnaglyphPass = 0;
 		PrepAnaglyphCameras();
@@ -545,13 +549,10 @@ void OGL_DrawScene(void (*drawRoutine)(void))
 
 	if (gGameViewInfoPtr->clearBackBuffer || (gDebugMode == 3))
 	{
-		if (gGamePrefs.anaglyph)
-		{
-			if (gGamePrefs.anaglyphColor)
-				glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);		// make sure clearing Red/Green/Blue channels
-			else
-				glColorMask(GL_TRUE, GL_FALSE, GL_TRUE, GL_TRUE);		// make sure clearing Red/Blue channels
-		}
+		if (gGamePrefs.anaglyphMode == ANAGLYPH_COLOR)
+			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);		// make sure clearing Red/Green/Blue channels
+		else if (gGamePrefs.anaglyphMode == ANAGLYPH_MONO)
+			glColorMask(GL_TRUE, GL_FALSE, GL_TRUE, GL_TRUE);		// make sure clearing Red/Blue channels
 		glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	}
 	else
@@ -564,7 +565,7 @@ void OGL_DrawScene(void (*drawRoutine)(void))
 
 do_anaglyph:
 
-	if (gGamePrefs.anaglyph)
+	if (gGamePrefs.anaglyphMode != ANAGLYPH_OFF)
 	{
 				/* SET COLOR MASK */
 
@@ -574,7 +575,7 @@ do_anaglyph:
 		}
 		else
 		{
-			if (gGamePrefs.anaglyphColor)
+			if (gGamePrefs.anaglyphMode == ANAGLYPH_COLOR)
 				glColorMask(GL_FALSE, GL_TRUE, GL_TRUE, GL_TRUE);
 			else
 				glColorMask(GL_FALSE, GL_FALSE, GL_TRUE, GL_TRUE);
@@ -622,7 +623,7 @@ do_anaglyph:
 			/* SEE IF DO ANOTHER ANAGLYPH PASS */
 			/***********************************/
 
-	if (gGamePrefs.anaglyph)
+	if (gGamePrefs.anaglyphMode != ANAGLYPH_OFF)
 	{
 		gAnaglyphPass++;
 		if (gAnaglyphPass == 1)
@@ -651,7 +652,7 @@ do_anaglyph:
 	{
 		// no-op
 	}
-	else if (gDebugMode > 0)
+	else if (gDebugMode == 1 || gDebugMode == 2)
 	{
 		char debugString[1024];
 		snprintf(
@@ -662,29 +663,33 @@ do_anaglyph:
 			"\n"
 			"input x:\t%.3f\n"
 			"input y:\t%.3f\n"
-			"input a:\t%.0f\u00b0\n"
+			"input a:\t%.0f\xC2\xB0\n"
 			"\n"
-			"player x:\t%.0f\n"
-			"player z:\t%.0f\n"
+			"player x:\t%.3f\n"
+			"player z:\t%.3f\n"
+			"player y:\t%.3f\t%s%s\n"
 			"\n"
-			"enemies:\t%d\n"
+			"nodes:\t%d\n"
+			"enemies:\t%d%s%s\n"
+#if 0
 			"t-defs:\t%d\n"
-			"sparkles:\t%d\n"
 			"h2o:\t\t%d\n"
-			"ground?\t%c\n"
+#endif
+			"shards:\t%d\n"
+			"sparkles:\t%d\n"
+			"pgroups:\t%d\n"
 			"\n"
+			"heap:\t\t%dK, %dp\n"
 			"vram:\t\t%dK\n"
 #if 0
-			"ptrs:\t\t%d\n"
-			"ptr mem:\t%ldK\n"
-#endif
-			"nodes:\t%d\n"
 			"\n"
 			"time since last thrust:\t%.3f\n"
 			"force cam align?\t\t%c\n"
 			"auto rotate cam?\t\t%c\n"
 			"cam user rot:\t\t%.3f\n"
 			"cam ctrl dX:\t\t%.3f\n"
+#endif
+			"\n\n\n\n\n\n\n\nOtto Matic %s, %s\n%s, OpenGL %s, %s"
 			,
 			(int)(gFramesPerSecond+.5f),
 			gPolysThisFrame,
@@ -693,22 +698,36 @@ do_anaglyph:
 			(180/PI) * ( atan2f(gPlayerInfo.analogControlZ,gPlayerInfo.analogControlX) ),
 			gPlayerInfo.coord.x,
 			gPlayerInfo.coord.z,
+			gPlayerInfo.coord.y,
+			gPlayerInfo.objNode && (gPlayerInfo.objNode->StatusBits & STATUS_BIT_ONGROUND)? "G": "",
+			gPlayerInfo.objNode && (gPlayerInfo.objNode->MPlatform)? "M": "",
+			gNumObjectNodes,
 			gNumEnemies,
+			(gMaxEnemies > 0 && gNumEnemies >= gMaxEnemies) ? " (!!!)" : "",
+			gAlienSaucer ? " [+ saucer]" : "",
+#if 0
 			gNumTerrainDeformations,
-			gNumSparkles,
 			gNumWaterDrawn,
-			gPlayerInfo.objNode && (gPlayerInfo.objNode->StatusBits & STATUS_BIT_ONGROUND)? 'Y': 'N',
+#endif
+			gShardPool? Pool_Size(gShardPool): 0,
+			gSparklePool? Pool_Size(gSparklePool): 0,
+			gParticleGroupPool? Pool_Size(gParticleGroupPool): 0,
+//			gNumPointers,
+			(int) (Pomme_GetHeapSize()/1024),
+			(int) Pomme_GetNumAllocs(),
 			gVRAMUsedThisFrame/1024,
 #if 0
-			gNumPointers,
-			gMemAllocatedInPtrs/1024,
-#endif
-			gNumObjectNodes,
 			gTimeSinceLastThrust,
 			gForceCameraAlignment? 'Y': 'N',
 			gAutoRotateCamera? 'Y': 'N',
 			gCameraUserRotY,
-			gCameraControlDelta.x
+			gCameraControlDelta.x,
+#endif
+			PROJECT_VERSION,
+			SDL_GetRevision(),
+			(const char*) glGetString(GL_RENDERER),
+			(const char*) glGetString(GL_VERSION),
+			SDL_GetCurrentVideoDriver()
 		);
 		TextMesh_Update(debugString, 0, gDebugText);
 		gDebugText->StatusBits &= ~STATUS_BIT_HIDDEN;
@@ -729,7 +748,7 @@ do_anaglyph:
 	SDL_GL_SwapWindow(gSDLWindow);					// end render loop
 
 
-	if (gGamePrefs.anaglyph)
+	if (gGamePrefs.anaglyphMode != ANAGLYPH_OFF)
 		RestoreCamerasFromAnaglyph();
 
 }
@@ -770,13 +789,10 @@ GLuint OGL_TextureMap_Load(void *imageMemory, int width, int height,
 GLuint	textureName;
 
 
-	if (gGamePrefs.anaglyph)
-	{
-		if (gGamePrefs.anaglyphColor)
-			ConvertTextureToColorAnaglyph(imageMemory, width, height, srcFormat, dataType);
-		else
-			ConvertTextureToGrey(imageMemory, width, height, srcFormat, dataType);
-	}
+	if (gGamePrefs.anaglyphMode == ANAGLYPH_COLOR)
+		ConvertTextureToColorAnaglyph(imageMemory, width, height, srcFormat, dataType);
+	else if (gGamePrefs.anaglyphMode == ANAGLYPH_MONO)
+		ConvertTextureToGrey(imageMemory, width, height, srcFormat, dataType);
 
 			/* GET A UNIQUE TEXTURE NAME & INITIALIZE IT */
 
@@ -825,13 +841,13 @@ OSErr					err;
 
 	FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, path, &spec);
 
-			/* LOAD RAW ARGB DATA FROM TGA FILE */
+			/* LOAD RAW RGBA DATA FROM TGA FILE */
 
 	err = ReadTGA(&spec, &pixelData, &header, true);
 	GAME_ASSERT(err == noErr);
 
 	GAME_ASSERT(header.bpp == 32);
-	GAME_ASSERT(header.imageType == TGA_IMAGETYPE_CONVERTED_ARGB);
+	GAME_ASSERT(header.imageType == TGA_IMAGETYPE_CONVERTED_RGBA);
 
 			/* PRE-PROCESS IMAGE */
 
@@ -864,10 +880,9 @@ OSErr					err;
 			pixelData,
 			header.width,
 			header.height,
-			GL_BGRA,
+			GL_RGBA,
 			internalFormat,
-			GL_UNSIGNED_INT_8_8_8_8
-			);
+			GL_UNSIGNED_BYTE);
 
 			/* CLEAN UP */
 
@@ -1140,7 +1155,7 @@ uint32_t	a;
 	else
 	if (dataType == GL_UNSIGNED_SHORT_1_5_5_5_REV)
 	{
-		u_short	*pix16 = (u_short *)imageMemory;
+		uint16_t	*pix16 = (uint16_t *)imageMemory;
 		for (y = 0; y < height; y++)
 		{
 			for (x = 0; x < width; x++)
@@ -1273,7 +1288,7 @@ OGLLightDefType	*lights;
 
 			/* SETUP FOR ANAGLYPH STEREO 3D CAMERA */
 
-	if (gGamePrefs.anaglyph)
+	if (gGamePrefs.anaglyphMode != ANAGLYPH_OFF)
 	{
 		float	left, right;
 		float	halfFOV = gGameViewInfoPtr->fov * .5f;

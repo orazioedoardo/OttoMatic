@@ -25,7 +25,7 @@ static ObjNode* LayOutCyclerValueText(int row);
 /*    CONSTANTS             */
 /****************************/
 
-#define MAX_MENU_ROWS	25
+#define MAX_MENU_ROWS	32
 #define MAX_MENU_COLS	5
 
 #define kSfxNavigate	EFFECT_WEAPONCLICK
@@ -80,7 +80,7 @@ static int					gMenuRow = 0;
 static int					gLastRowOnRootMenu = -1;
 static int					gKeyColumn = 0;
 static int					gPadColumn = 0;
-static float				gMenuColXs[MAX_MENU_COLS] = { 0, 170, 300, 430, 560 };
+static float				gMenuColXs[MAX_MENU_COLS] = { 0, 190, 300, 430, 560 };
 static float				gMenuRowYs[MAX_MENU_ROWS];
 static float				gMenuFadeAlpha = 0;
 static int					gMenuState = kMenuStateOff;
@@ -112,16 +112,24 @@ static OGLColorRGBA PulsateColor(float* time)
 
 static KeyBinding* GetBindingAtRow(int row)
 {
-	return &gGamePrefs.keys[gMenu[row].kb];
+	return &gGamePrefs.remappableKeys[gMenu[row].kb];
 }
 
 static const char* GetKeyBindingName(int row, int col)
 {
 	int16_t scancode = GetBindingAtRow(row)->key[col];
-	if (scancode == 0)
-		return Localize(STR_UNBOUND_PLACEHOLDER);
-	else
-		return SDL_GetScancodeName(scancode);
+
+	switch (scancode)
+	{
+		case 0:
+			return Localize(STR_UNBOUND_PLACEHOLDER);
+		case SDL_SCANCODE_COMMA:				// on a US layout, it makes more sense to show "<" for camera left
+			return "<";						
+		case SDL_SCANCODE_PERIOD:				// on a US layout, it makes more sense to show ">" for camera right
+			return ">";						
+		default:
+			return SDL_GetScancodeName(scancode);
+	}
 }
 
 static const char* GetPadBindingName(int row, int col)
@@ -566,7 +574,8 @@ static void NavigateKeyBinding(const MenuItem* entry)
 	if (GetNewNeedState(kNeed_UIDelete)
 		|| (gMouseHoverValidRow && FlushMouseButtonPress(SDL_BUTTON_MIDDLE)))
 	{
-		gGamePrefs.keys[entry->kb].key[gKeyColumn] = 0;
+		gGamePrefs.remappableKeys[entry->kb].key[gKeyColumn] = 0;
+
 		PlayEffect(kSfxDelete);
 		MakeTextAtRowCol(Localize(STR_UNBOUND_PLACEHOLDER), gMenuRow, gKeyColumn+1);
 		return;
@@ -609,7 +618,8 @@ static void NavigatePadBinding(const MenuItem* entry)
 	if (GetNewNeedState(kNeed_UIDelete)
 		|| (gMouseHoverValidRow && FlushMouseButtonPress(SDL_BUTTON_MIDDLE)))
 	{
-		gGamePrefs.keys[entry->kb].gamepad[gPadColumn].type = kInputTypeUnbound;
+		gGamePrefs.remappableKeys[entry->kb].gamepad[gPadColumn].type = kInputTypeUnbound;
+
 		PlayEffect(kSfxDelete);
 		MakeTextAtRowCol(Localize(STR_UNBOUND_PLACEHOLDER), gMenuRow, gPadColumn+1);
 		return;
@@ -639,7 +649,8 @@ static void NavigateMouseBinding(const MenuItem* entry)
 	if (GetNewNeedState(kNeed_UIDelete)
 		|| (gMouseHoverValidRow && FlushMouseButtonPress(SDL_BUTTON_MIDDLE)))
 	{
-		gGamePrefs.keys[entry->kb].mouseButton = 0;
+		gGamePrefs.remappableKeys[entry->kb].mouseButton = 0;
+
 		PlayEffect(kSfxDelete);
 		MakeTextAtRowCol(Localize(STR_UNBOUND_PLACEHOLDER), gMenuRow, 1);
 		return;
@@ -794,6 +805,7 @@ static void AwaitKeyPress(void)
 		{
 			UnbindScancodeFromAllRemappableInputNeeds(scancode);
 			kb->key[gKeyColumn] = scancode;
+
 			MakeTextAtRowCol(GetKeyBindingName(gMenuRow, gKeyColumn), gMenuRow, gKeyColumn+1);
 			gMenuState = kMenuStateReady;
 			PlayEffect(kSfxCycle);
@@ -836,6 +848,7 @@ static void AwaitPadPress(void)
 			UnbindPadButtonFromAllRemappableInputNeeds(kInputTypeButton, button);
 			kb->gamepad[gPadColumn].type = kInputTypeButton;
 			kb->gamepad[gPadColumn].id = button;
+
 			MakeTextAtRowCol(GetPadBindingName(gMenuRow, gPadColumn), gMenuRow, gPadColumn+1);
 			gMenuState = kMenuStateReady;
 			PlayEffect(kSfxCycle);
@@ -862,6 +875,7 @@ static void AwaitPadPress(void)
 			UnbindPadButtonFromAllRemappableInputNeeds(axisType, axis);
 			kb->gamepad[gPadColumn].type = axisType;
 			kb->gamepad[gPadColumn].id = axis;
+
 			MakeTextAtRowCol(GetPadBindingName(gMenuRow, gPadColumn), gMenuRow, gPadColumn+1);
 			gMenuState = kMenuStateReady;
 			PlayEffect(kSfxCycle);
@@ -889,6 +903,7 @@ static void AwaitMouseClick(void)
 		{
 			UnbindMouseButtonFromAllRemappableInputNeeds(mouseButton);
 			kb->mouseButton = mouseButton;
+
 			MakeTextAtRowCol(GetMouseBindingName(gMenuRow), gMenuRow, 1);
 			gMenuState = kMenuStateReady;
 			PlayEffect(kSfxCycle);

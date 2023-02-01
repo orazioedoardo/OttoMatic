@@ -32,21 +32,6 @@ static void SaveHighScores(void);
 /*    CONSTANTS            */
 /***************************/
 
-enum
-{
-	HIGHSCORES_SObjType_Cyc
-};
-
-
-enum
-{
-	HIGHSCORES_SObjType_ScoreText,
-	HIGHSCORES_SObjType_ScoreTextGlow,
-	HIGHSCORES_SObjType_EnterNameText,
-	HIGHSCORES_SObjType_EnterNameGlow
-};
-
-
 #define kHSTableYStart		(-140)
 #define kHSTableScale		.7f
 #define kHSTableXSpread		150
@@ -424,7 +409,6 @@ static void SetupScoreScreen(void)
 {
 FSSpec				spec;
 OGLSetupInputType	viewDef;
-ObjNode				*newObj;
 Str255				scoreString;
 
 	PlaySong(SONG_HIGHSCORE, 0);
@@ -473,9 +457,9 @@ Str255				scoreString;
 			/* SET ANAGLYPH INFO */
 			/*********************/
 
-	if (gGamePrefs.anaglyph)
+	if (gGamePrefs.anaglyphMode != ANAGLYPH_OFF)
 	{
-		if (!gGamePrefs.anaglyphColor)
+		if (gGamePrefs.anaglyphMode == ANAGLYPH_MONO)
 		{
 			viewDef.lights.ambientColor.r 		+= .1f;					// make a little brighter
 			viewDef.lights.ambientColor.g 		+= .1f;
@@ -493,7 +477,7 @@ Str255				scoreString;
 				/* LOAD ART */
 				/************/
 
-	InitSparkles();
+	InitEffects();
 
 			/* LOAD MODELS */
 
@@ -508,26 +492,22 @@ Str255				scoreString;
 
 			/* LOAD SPRITES */
 
-	FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, ":Sprites:particle.sprites", &spec);
-	LoadSpriteFile(&spec, SPRITE_GROUP_PARTICLES);
+//	LoadSpriteGroup(SPRITE_GROUP_PARTICLES, PARTICLE_SObjType_COUNT, "particle");
+	LoadSpriteGroup(SPRITE_GROUP_HIGHSCORES, HIGHSCORES_SObjType_COUNT, "highscores");
 	BlendAllSpritesInGroup(SPRITE_GROUP_PARTICLES);
-
-	FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, ":Sprites:highscores.sprites", &spec);
-	LoadSpriteFile(&spec, SPRITE_GROUP_HIGHSCORES);
-
 
 
 			/* MAKE CYC */
 
 	gNewObjectDefinition.group 		= MODEL_GROUP_HIGHSCORES;
-	gNewObjectDefinition.type 		= HIGHSCORES_SObjType_Cyc;
+	gNewObjectDefinition.type 		= HIGHSCORES_ObjType_Cyc;
 	gNewObjectDefinition.coord		= viewDef.camera.from;
 	gNewObjectDefinition.flags 		= STATUS_BIT_DONTCULL|STATUS_BIT_NOLIGHTING|STATUS_BIT_NOFOG;
 	gNewObjectDefinition.slot 		= 10;
 	gNewObjectDefinition.moveCall 	= MoveHighScoresCyc;
 	gNewObjectDefinition.rot 		= 0;
 	gNewObjectDefinition.scale 		= 2;
-	newObj = MakeNewDisplayGroupObject(&gNewObjectDefinition);
+	MakeNewDisplayGroupObject(&gNewObjectDefinition);
 
 
 			/* SCORE STRING */
@@ -567,6 +547,7 @@ static void FreeScoreScreen(void)
 	gNewScoreNameMesh = nil;
 	gCursorMesh = nil;
 	FreeAllSkeletonFiles(-1);
+	DisposeEffects();
 	DisposeAllSpriteGroups();
 	DisposeAllBG3DContainers();
 	DisposeSoundBank(SOUNDBANK_BONUS);

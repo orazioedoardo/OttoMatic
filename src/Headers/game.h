@@ -16,6 +16,10 @@ extern "C"
 {
 #endif
 
+// If enabled, "VIP" enemies are always allowed to spawn and they don't count towards the global enemy budget.
+// VIP enemy kinds are: GiantLizard and Flytrap.
+#define VIP_ENEMIES 1
+
 		/* HEADERS */
 
 #include <SDL.h>
@@ -25,6 +29,7 @@ extern "C"
 
 #include "Pomme.h"
 
+#include "pool.h"
 #include "globals.h"
 #include "structs.h"
 #include "metaobjects.h"
@@ -92,6 +97,7 @@ extern	Boolean					gGameOver;
 extern	Boolean					gGamePaused;
 extern	Boolean					gHelpMessageDisabled[NUM_HELP_MESSAGES];
 extern	Boolean					gIceCracked;
+extern	Boolean					gIsInGame;
 extern	Boolean					gLevelCompleted;
 extern	Boolean					gMouseMotionNow;
 extern	Boolean					gMyState_Lighting;
@@ -125,6 +131,7 @@ extern	OGLMatrix4x4			gWorldToFrustumMatrix;
 extern	OGLMatrix4x4			gWorldToViewMatrix;
 extern	OGLMatrix4x4			gWorldToWindowMatrix;
 extern	OGLPoint2D				gBestCheckpointCoord;
+extern	OGLPoint2D				gRocketShipHotZone[4];
 extern	OGLPoint3D				gCoord;
 extern	OGLSetupOutputType		*gGameViewInfoPtr;
 extern	OGLVector2D				gCameraControlDelta;
@@ -143,7 +150,9 @@ extern	ObjNode					*gSaucerTarget;
 extern	ObjNode					*gSoapBubble;
 extern	ObjNode					*gTargetPickup;
 extern	ObjNode					*gTractorBeamObj;
-extern	ParticleGroupType		*gParticleGroups[];
+extern	Pool 					*gParticleGroupPool;
+extern	Pool					*gShardPool;
+extern	Pool					*gSparklePool;
 extern	PrefsType				gGamePrefs;
 extern	SDL_GameController		*gSDLController;
 extern	SDL_GLContext			gAGLContext;
@@ -201,56 +210,52 @@ extern	float					gTimeSinceLastThrust;
 extern	int						gGameWindowHeight;
 extern	int						gGameWindowWidth;
 extern	int						gLevelNum;
+extern	int						gMaxEnemies;
+extern	int						gNumEnemies;
+extern	int						gNumEnemyOfKind[NUM_ENEMY_KINDS];
+extern	int						gNumHumansInLevel;
 extern	int						gNumHumansInTransit;
 extern	int						gNumHumansRescuedTotal;
 extern	int						gNumIceCracks;
 extern	int						gNumObjectNodes;
 extern	int						gNumObjectsInBG3DGroupList[MAX_BG3D_GROUPS];
-extern	int						gNumSparkles;
+extern	int						gNumSpritesInGroupList[MAX_SPRITE_GROUPS];
 extern	int						gPolysThisFrame;
 extern	int						gVRAMUsedThisFrame;
-extern	long					gNumFences;
-extern	long					gNumSplines;
-extern	long					gNumSpritesInGroupList[MAX_SPRITE_GROUPS];
-extern	long					gNumSuperTilesDeep;
-extern	long					gNumSuperTilesWide;
-extern	long					gNumUniqueSuperTiles;
-extern	long					gNumWaterPatches;
+extern	int						gNumFences;
+extern	int						gNumSplines;
+extern	int						gNumSuperTilesDeep;
+extern	int						gNumSuperTilesWide;
+extern	int						gNumUniqueSuperTiles;
+extern	int						gNumWaterPatches;
 extern	long					gPrefsFolderDirID;
-extern	long					gTerrainTileDepth;
-extern	long					gTerrainTileWidth;
-extern	long					gTerrainUnitDepth;
-extern	long					gTerrainUnitWidth;
+extern	int						gTerrainTileDepth;
+extern	int						gTerrainTileWidth;
+extern	int						gTerrainUnitDepth;
+extern	int						gTerrainUnitWidth;
+extern	int						*gTerrainItemFileIDs;
 extern	short					gBeamMode;
 extern	short					gBeamModeSelected;
 extern	short					gBestCheckpointNum;
 extern	short					gDisplayedHelpMessage;
-extern	short					gMainAppRezFile;
-extern	short					gNumActiveParticleGroups;
-extern	short					gNumCollisions;
-extern	short					gNumEnemies;
-extern	short					gNumFencesDrawn;
-extern	short					gNumHumansInSaucer;
-extern	short					gNumHumansRescuedOfType[NUM_HUMAN_TYPES];
-extern	short					gNumSuperTilesDrawn;
-extern	short					gNumTerrainDeformations;
-extern	short					gNumTerrainItems;
-extern	short					gNumWaterDrawn;
+extern	int						gNumCollisions;
+extern	int						gNumFencesDrawn;
+extern	int						gNumHumansInSaucer;
+extern	int						gNumHumansRescuedOfType[NUM_HUMAN_TYPES];
+extern	int						gNumSuperTilesDrawn;
+extern	int						gNumTerrainDeformations;
+extern	int						gNumTerrainItems;
+extern	int						gNumWaterDrawn;
 extern	short					gPrefsFolderVRefNum;
-extern	signed char				gNumEnemyOfKind[];
-extern	u_long					gAutoFadeStatusBits;
-extern	u_long					gGameFrameNum;
-extern	u_long					gGlobalMaterialFlags;
-extern	u_long					gLoadedScore;
-extern	u_long					gScore;
-extern	u_short					**gTileGrid;
-extern	u_short					gTileAttribFlags;
+extern	uint32_t				gAutoFadeStatusBits;
+extern	uint32_t				gGameFrameNum;
+extern	uint32_t				gGlobalMaterialFlags;
+extern	uint32_t				gLoadedScore;
+extern	uint32_t				gScore;
+extern	uint16_t				**gTileGrid;
+extern	uint16_t				gTileAttribFlags;
 
 #ifdef __cplusplus
 };
 #endif
 
-#define GAME_ASSERT(condition) do { if (!(condition)) DoAssert(#condition, __func__, __LINE__); } while(0)
-#define GAME_ASSERT_MESSAGE(condition, message) do { if (!(condition)) DoAssert(message, __func__, __LINE__); } while(0)
-#define DECLARE_WORKBUF(buf, bufSize) char (buf)[256]; const int (bufSize) = 256
-#define DECLARE_STATIC_WORKBUF(buf, bufSize) static char (buf)[256]; static const int (bufSize) = 256

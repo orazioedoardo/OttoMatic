@@ -392,7 +392,7 @@ Boolean AddBasicPlant(TerrainItemEntryType *itemPtr, long  x, long z)
 {
 ObjNode	*newObj;
 int		type = itemPtr->parm[0];
-u_long	flags = gAutoFadeStatusBits ;
+uint32_t flags = gAutoFadeStatusBits;
 
 	switch(type)
 	{
@@ -452,7 +452,6 @@ u_long	flags = gAutoFadeStatusBits ;
 	gNewObjectDefinition.group 		= MODEL_GROUP_LEVELSPECIFIC;
 	gNewObjectDefinition.coord.x 	= x;
 	gNewObjectDefinition.coord.z 	= z;
-//	gNewObjectDefinition.coord.y 	= GetTerrainY(x,z);
 	gNewObjectDefinition.coord.y 	= GetMinTerrainY(x, z, gNewObjectDefinition.group, gNewObjectDefinition.type, 1.0);		// pass bogus scale of .x since we don't want true bbox of object just some small inner area
 	gNewObjectDefinition.flags 		= flags;
 	gNewObjectDefinition.slot 		= 60;
@@ -676,7 +675,7 @@ static const short types[] =
 
 			/* SET COLLISION STUFF */
 
-	newObj->CType 			= CTYPE_MISC|CTYPE_BLOCKCAMERA;
+	newObj->CType 			= CTYPE_MISC | CTYPE_BLOCKCAMERA | CTYPE_BLOCKRAYS;
 
 	if (type != 1)			// hack for 1.0.2 update to fix tractor-barn metal fence go-thru problem
 		newObj->CType |= CTYPE_IMPENETRABLE;
@@ -1066,8 +1065,7 @@ OGLPoint3D			p;
 
 static void DrawSlimeFlow(ObjNode *slime)
 {
-float	x,y,z,r,s,y2;
-float	v;
+float	v,r,s,y2;
 int		tubeType;
 OGLMatrix4x4				m;
 OGLPoint3D					tc[4];
@@ -1098,10 +1096,6 @@ static const float heights[] =
 
 	s = slime->Scale.x;
 
-	x = slime->Coord.x;
-	y = slime->Coord.y;
-	z = slime->Coord.z;
-
 	y2 = heights[tubeType] * s;							// top y
 
 	r = 45.0f * s;
@@ -1128,10 +1122,10 @@ static const float heights[] =
 			/* DRAW IT */
 
 	glBegin(GL_QUADS);
-	glTexCoord2f(0,v);		glVertex3fv((GLfloat *)&tc[0]);
-	glTexCoord2f(1,v);		glVertex3fv((GLfloat *)&tc[1]);
-	glTexCoord2f(1,1+v);	glVertex3fv((GLfloat *)&tc[2]);
-	glTexCoord2f(0,1+v);	glVertex3fv((GLfloat *)&tc[3]);
+	glTexCoord2f(0,v);		glVertex3fv(&tc[0].x);
+	glTexCoord2f(1,v);		glVertex3fv(&tc[1].x);
+	glTexCoord2f(1,1+v);	glVertex3fv(&tc[2].x);
+	glTexCoord2f(0,1+v);	glVertex3fv(&tc[3].x);
 	glEnd();
 
 	gGlobalMaterialFlags = 0;
@@ -1479,9 +1473,6 @@ ObjNode	*newObj;
 
 static void MovePointySlimeTree(ObjNode *theNode)
 {
-float	x,y,z;
-int		i;
-
 static const OGLPoint3D	smallPts[7] =
 {
 	{-35.5,	23.9,	9.9},
@@ -1530,9 +1521,8 @@ OGLPoint3D	tPts[7];
 		return;
 
 
-	x = theNode->Coord.x;
-	y = theNode->Coord.y;
-	z = theNode->Coord.z;
+	float x = theNode->Coord.x;
+	float z = theNode->Coord.z;
 
 			/* SEE IF ANYWHERE IN RANGE */
 
@@ -1546,7 +1536,7 @@ OGLPoint3D	tPts[7];
 		case	SLIME_ObjType_SlimeTree_Small:
 				OGLPoint3D_TransformArray(&smallPts[0], &theNode->BaseTransformMatrix, &tPts[0], 7);		// transform pts
 
-				for (i = 0; i < 7; i++)
+				for (int i = 0; i < 7; i++)
 				{
 					if (OGLPoint3D_Distance(&tPts[i], &gPlayerInfo.coord) < 130.0f)
 					{
@@ -1563,7 +1553,7 @@ OGLPoint3D	tPts[7];
 
 		case	SLIME_ObjType_SlimeTree_Big:
 				OGLPoint3D_TransformArray(&bigPts[0], &theNode->BaseTransformMatrix, &tPts[0], 5);		// transform pts
-				for (i = 0; i < 5; i++)
+				for (int i = 0; i < 5; i++)
 				{
 					if (OGLPoint3D_Distance(&tPts[i], &gPlayerInfo.coord) < 130.0f)
 					{

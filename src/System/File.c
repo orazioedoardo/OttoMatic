@@ -46,7 +46,7 @@ static inline void Blit16(
 
 #define PREFS_HEADER_LENGTH 16
 #define PREFS_FILE_NAME ":OttoMatic:Preferences6"
-const char PREFS_HEADER_STRING[PREFS_HEADER_LENGTH+1] = "OttoMaticPrefs06";		// Bump this every time prefs struct changes -- note: this will reset user prefs
+const char PREFS_HEADER_STRING[PREFS_HEADER_LENGTH+1] = "OttoMaticPrefs07";		// Bump this every time prefs struct changes -- note: this will reset user prefs
 
 
 		/* PLAYFIELD HEADER */
@@ -112,7 +112,7 @@ float	g3DTileSize, g3DMinY, g3DMaxY;
 
 SkeletonDefType *LoadSkeletonFile(short skeletonType)
 {
-QDErr		iErr;
+//QDErr		iErr;
 short		fRefNum;
 FSSpec		fsSpec;
 SkeletonDefType	*skeleton;
@@ -158,9 +158,8 @@ const char *fileNames[MAX_SKELETON_TYPES] =
 	fRefNum = FSpOpenResFile(&fsSpec,fsRdPerm);
 	if (fRefNum == -1)
 	{
-		iErr = ResError();
-		DoAlert("Error opening Skel Rez file");
-		ShowSystemErr(iErr);
+//		iErr = ResError();
+		DoFatalAlert("Error opening Skel Rez file");
 	}
 
 	UseResFile(fRefNum);
@@ -183,7 +182,6 @@ const char *fileNames[MAX_SKELETON_TYPES] =
 			/* CLOSE REZ FILE */
 
 	CloseResFile(fRefNum);
-	UseResFile(gMainAppRezFile);
 
 	return(skeleton);
 }
@@ -265,7 +263,7 @@ SkeletonFile_AnimHeader_Type	*animHeaderPtr;
 	for (i=0; i < numJoints; i++)
 	{
 		File_BoneDefinitionType	*bonePtr;
-		u_short					*indexPtr;
+		uint16_t					*indexPtr;
 
 			/* READ BONE DATA */
 
@@ -287,11 +285,11 @@ SkeletonFile_AnimHeader_Type	*animHeaderPtr;
 
 			/* ALLOC THE POINT & NORMALS SUB-ARRAYS */
 
-		skeleton->Bones[i].pointList = (u_short *)AllocPtr(sizeof(u_short) * (int)skeleton->Bones[i].numPointsAttachedToBone);
+		skeleton->Bones[i].pointList = (uint16_t *)AllocPtr(sizeof(uint16_t) * (int)skeleton->Bones[i].numPointsAttachedToBone);
 		if (skeleton->Bones[i].pointList == nil)
 			DoFatalAlert("ReadDataFromSkeletonFile: AllocPtr/pointList failed!");
 
-		skeleton->Bones[i].normalList = (u_short *)AllocPtr(sizeof(u_short) * (int)skeleton->Bones[i].numNormalsAttachedToBone);
+		skeleton->Bones[i].normalList = (uint16_t *)AllocPtr(sizeof(uint16_t) * (int)skeleton->Bones[i].numNormalsAttachedToBone);
 		if (skeleton->Bones[i].normalList == nil)
 			DoFatalAlert("ReadDataFromSkeletonFile: AllocPtr/normalList failed!");
 
@@ -301,7 +299,7 @@ SkeletonFile_AnimHeader_Type	*animHeaderPtr;
 		if (hand == nil)
 			DoFatalAlert("Error reading BonP resource!");
 		HLock(hand);
-		indexPtr = (u_short *)(*hand);
+		indexPtr = (uint16_t *)(*hand);
 
 			/* COPY POINT INDEX ARRAY INTO BONE STRUCT */
 
@@ -316,7 +314,7 @@ SkeletonFile_AnimHeader_Type	*animHeaderPtr;
 		if (hand == nil)
 			DoFatalAlert("Error reading BonN resource!");
 		HLock(hand);
-		indexPtr = (u_short *)(*hand);
+		indexPtr = (uint16_t *)(*hand);
 
 			/* COPY NORMAL INDEX ARRAY INTO BONE STRUCT */
 
@@ -341,7 +339,7 @@ SkeletonFile_AnimHeader_Type	*animHeaderPtr;
 	HLock(hand);
 	pointPtr = (OGLPoint3D *)*hand;
 
-	i = GetHandleSize(hand) / sizeof(OGLPoint3D);
+	i = (int) (GetHandleSize(hand) / sizeof(OGLPoint3D));
 	if (i != skeleton->numDecomposedPoints)
 		DoFatalAlert("# of points in Reference Model has changed!");
 	else
@@ -451,7 +449,7 @@ SkeletonFile_AnimHeader_Type	*animHeaderPtr;
 // Load in standard preferences
 //
 
-OSErr LoadPrefs(PrefsType *prefBlock)
+OSErr LoadPrefs(void)
 {
 OSErr		iErr;
 short		refNum;
@@ -504,16 +502,9 @@ PrefsType	prefBuffer;
 
 	FSClose(refNum);
 
-			/* NUKE NON-REMAPPABLE KEYBINDINGS TO DEFAULTS */
-
-	for (int i = NUM_REMAPPABLE_NEEDS; i < NUM_CONTROL_NEEDS; i++)
-	{
-		prefBuffer.keys[i] = kDefaultKeyBindings[i];
-	}
-
 			/* PREFS ARE OK */
 
-	*prefBlock = prefBuffer;
+	gGamePrefs = prefBuffer;
 	return noErr;
 
 fileIsCorrupt:
@@ -602,18 +593,23 @@ const char*	levelModelFiles[NUM_LEVELS] =
 	":Models:level10_brainboss.bg3d",
 };
 
-const char*	levelSpriteFiles[NUM_LEVELS] =
+struct
 {
-	":Sprites:level1_farm.sprites",
-	":Sprites:level2_slime.sprites",
-	"",
-	":Sprites:level4_apocalypse.sprites",
-	":Sprites:level5_cloud.sprites",
-	":Sprites:level6_jungle.sprites",
-	":Sprites:level6_jungle.sprites",
-	":Sprites:level8_fireice.sprites",
-	"",
-	":Sprites:level10_brainboss.sprites",
+	const char* groupName;
+	int numSprites;
+}
+levelSpriteFiles[NUM_LEVELS] =
+{
+	{"farm", FARM_SObjType_COUNT},
+	{"slime", SLIME_SObjType_COUNT},
+	{NULL, 0},
+	{"apocalypse", APOCALYPSE_SObjType_COUNT},
+	{"cloud", CLOUD_SObjType_COUNT},
+	{"jungle", JUNGLE_SObjType_COUNT},
+	{"jungle", JUNGLE_SObjType_COUNT},
+	{"fireice", FIREICE_SObjType_COUNT},
+	{NULL, 0},
+	{"brainboss", BRAINBOSS_SObjType_COUNT},
 };
 
 
@@ -916,23 +912,15 @@ const char*	levelSpriteFiles[NUM_LEVELS] =
 
 			/* LOAD SPRITES */
 
-	if (levelSpriteFiles[gLevelNum][0] > 0)
+	if (levelSpriteFiles[gLevelNum].numSprites != 0)
 	{
-		FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, levelSpriteFiles[gLevelNum], &spec);
-		LoadSpriteFile(&spec, SPRITE_GROUP_LEVELSPECIFIC);
+		LoadSpriteGroup(SPRITE_GROUP_LEVELSPECIFIC, levelSpriteFiles[gLevelNum].numSprites, levelSpriteFiles[gLevelNum].groupName);
 	}
 
-	FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, ":Sprites:infobar.sprites", &spec);
-	LoadSpriteFile(&spec, SPRITE_GROUP_INFOBAR);
-
-	FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, ":Sprites:fence.sprites", &spec);
-	LoadSpriteFile(&spec, SPRITE_GROUP_FENCES);
-
-	FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, ":Sprites:global.sprites", &spec);
-	LoadSpriteFile(&spec, SPRITE_GROUP_GLOBAL);
-
-	FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, ":Sprites:spheremap.sprites", &spec);
-	LoadSpriteFile(&spec, SPRITE_GROUP_SPHEREMAPS);
+	LoadSpriteGroup(SPRITE_GROUP_INFOBAR, INFOBAR_SObjType_COUNT, "infobar");
+	LoadSpriteGroup(SPRITE_GROUP_FENCES, FENCE_TYPE_COUNT, "fence");
+	LoadSpriteGroup(SPRITE_GROUP_GLOBAL, GLOBAL_SObjType_COUNT, "global");
+	LoadSpriteGroup(SPRITE_GROUP_SPHEREMAPS, SPHEREMAP_SObjType_COUNT, "spheremap");
 
 
 			/* LOAD TERRAIN */
@@ -1080,16 +1068,16 @@ OSErr					iErr;
 			//
 
 	{
-		u_short	*src;
+		uint16_t	*src;
 
 		hand = GetResource('Layr',1000);
 		GAME_ASSERT_MESSAGE(hand, "Error reading map layer rez");
 		{
 			if (gTileGrid)														// free old array
 				Free_2d_array(gTileGrid);
-			Alloc_2d_array(u_short, gTileGrid, gTerrainTileDepth, gTerrainTileWidth);
+			Alloc_2d_array(uint16_t, gTileGrid, gTerrainTileDepth, gTerrainTileWidth);
 
-			src = (u_short *)*hand;
+			src = (uint16_t *)*hand;
 			for (int row = 0; row < gTerrainTileDepth; row++)
 			{
 				for (int col = 0; col < gTerrainTileWidth; col++)
@@ -1129,26 +1117,37 @@ OSErr					iErr;
 	hand = GetResource('Itms',1000);
 	GAME_ASSERT_MESSAGE(hand, "Error reading itemlist resource!");
 	{
-		TerrainItemEntryType   *rezItems;
-
 		DetachResource(hand);							// lets keep this data around
 		HLockHi(hand);									// LOCK this one because we have the lookup table into this
 		gMasterItemList = (TerrainItemEntryType **)hand;
-		rezItems = (TerrainItemEntryType *)*hand;
+
+		GAME_ASSERT(GetHandleSize(hand) == (Size)(gNumTerrainItems * sizeof(TerrainItemEntryType)));
 
 					/* CONVERT COORDINATES */
 
 		for (int i = 0; i < gNumTerrainItems; i++)
 		{
-			(*gMasterItemList)[i].x = SwizzleULong(&rezItems[i].x) * MAP2UNIT_VALUE;								// convert coordinates
-			(*gMasterItemList)[i].y = SwizzleULong(&rezItems[i].y) * MAP2UNIT_VALUE;
+			TerrainItemEntryType* item = &(*gMasterItemList)[i];
+			item->x = SwizzleULong(&item->x);
+			item->y = SwizzleULong(&item->y);
+			item->type = SwizzleUShort(&item->type);
+			item->flags = SwizzleUShort(&item->flags);
 
-			(*gMasterItemList)[i].type = SwizzleUShort(&rezItems[i].type);
-			(*gMasterItemList)[i].parm[0] = rezItems[i].parm[0];
-			(*gMasterItemList)[i].parm[1] = rezItems[i].parm[1];
-			(*gMasterItemList)[i].parm[2] = rezItems[i].parm[2];
-			(*gMasterItemList)[i].parm[3] = rezItems[i].parm[3];
-			(*gMasterItemList)[i].flags = SwizzleUShort(&rezItems[i].flags);
+#if 0
+			printf("Item#%d: %08x %08x %04x %02x%02x%02x%02x %04x\n",
+				i,
+				item->x,
+				item->y,
+				item->type,
+				item->parm[0],
+				item->parm[1],
+				item->parm[2],
+				item->parm[3],
+				item->flags);
+#endif
+
+			item->x *= MAP2UNIT_VALUE;
+			item->y *= MAP2UNIT_VALUE;
 		}
 	}
 
@@ -1353,7 +1352,6 @@ OSErr					iErr;
 			/* CLOSE REZ FILE */
 
 	CloseResFile(fRefNum);
-	UseResFile(gMainAppRezFile);
 
 
 

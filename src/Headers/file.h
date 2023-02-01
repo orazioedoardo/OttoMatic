@@ -56,24 +56,33 @@ typedef struct
 typedef struct
 {
 	Boolean	fullscreen;
+	Boolean	vsync;
+	Boolean	uiCentering;
+	Byte	uiScaleLevel;
 	Byte	preferredDisplay;
 	Byte	antialiasingLevel;
 	Boolean	music;
 	Byte	language;
 	Boolean	playerRelControls;
+	Boolean	autoAlignCamera;
 	Byte	mouseSensitivityLevel;
 	Boolean	mouseControlsOtto;
 	Boolean	snappyCameraControl;		// if false, vanilla momentum-y camera swinging
 	Boolean	gamepadRumble;
-	Boolean	anaglyph;
-	Boolean	anaglyphColor;
+	Byte	anaglyphMode;
 	uint8_t	anaglyphCalibrationRed;
 	uint8_t	anaglyphCalibrationGreen;
 	uint8_t	anaglyphCalibrationBlue;
 	Boolean doAnaglyphChannelBalancing;
-	KeyBinding	keys[NUM_CONTROL_NEEDS];
+	KeyBinding	remappableKeys[NUM_REMAPPABLE_NEEDS];
 }PrefsType;
 
+enum
+{
+	ANAGLYPH_OFF,
+	ANAGLYPH_COLOR,
+	ANAGLYPH_MONO,
+};
 
 
 
@@ -96,7 +105,7 @@ typedef struct
 //=================================================
 
 SkeletonDefType *LoadSkeletonFile(short skeletonType);
-extern	OSErr LoadPrefs(PrefsType *prefBlock);
+OSErr LoadPrefs(void);
 void SavePrefs(void);
 
 void LoadPlayfield(FSSpec *specPtr);

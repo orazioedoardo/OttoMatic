@@ -323,7 +323,7 @@ static const OGLPoint3D	humanPt[] =
 				/* LOAD ART */
 				/************/
 
-	InitSparkles();
+	InitEffects();
 
 
 			/* LOAD MODELS */
@@ -341,15 +341,10 @@ static const OGLPoint3D	humanPt[] =
 
 			/* LOAD SPRITES */
 
-	FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, ":Sprites:particle.sprites", &spec);
-	LoadSpriteFile(&spec, SPRITE_GROUP_PARTICLES);
+//	LoadSpriteGroup(SPRITE_GROUP_PARTICLES, PARTICLE_SObjType_COUNT, "particle");
+	LoadSpriteGroup(SPRITE_GROUP_SPHEREMAPS, SPHEREMAP_SObjType_COUNT, "spheremap");
+	LoadSpriteGroup(SPRITE_GROUP_LOSE, GAMEOVER_SObjType_COUNT, "lose");
 	BlendAllSpritesInGroup(SPRITE_GROUP_PARTICLES);
-
-	FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, ":Sprites:spheremap.sprites", &spec);
-	LoadSpriteFile(&spec, SPRITE_GROUP_SPHEREMAPS);
-
-	FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, ":Sprites:lose.sprites", &spec);
-	LoadSpriteFile(&spec, SPRITE_GROUP_LOSE);
 
 
 			/* LOAD SKELETONS */
@@ -485,9 +480,9 @@ static void FreeWinScreen(void)
 	MyFlushEvents();
 	DeleteAllObjects();
 	FreeAllSkeletonFiles(-1);
+	DisposeEffects();
 	DisposeAllSpriteGroups();
 	DisposeAllBG3DContainers();
-//	DisposeSoundBank(SOUND_BANK_WIN);
 	OGL_DisposeWindowSetup();
 	Pomme_FlushPtrTracking(true);
 }

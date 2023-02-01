@@ -17,7 +17,7 @@
 /****************************/
 
 static short FindSilentChannel(void);
-static void Calc3DEffectVolume(short effectNum, OGLPoint3D *where, float volAdjust, u_long *leftVolOut, u_long *rightVolOut);
+static void Calc3DEffectVolume(short effectNum, OGLPoint3D *where, float volAdjust, uint32_t *leftVolOut, uint32_t *rightVolOut);
 //static void UpdateGlobalVolume(void);
 
 
@@ -46,7 +46,7 @@ typedef struct
 	SndListHandle	sndHandle;
 	long			sndOffset;
 	short			lastPlayedOnChannel;
-	u_long			lastLoudness;
+	uint32_t			lastLoudness;
 } LoadedEffect;
 
 enum
@@ -100,7 +100,6 @@ static	SndChannelPtr		gMusicChannel = nil;
 Boolean						gAllowAudioKeys = true;
 
 
-static short				gMusicFileRefNum = 0x0ded;
 static short				gCurrentSong = -1;
 static Boolean				gSongPlayingFlag = false;
 
@@ -158,7 +157,7 @@ static const EffectDef kEffectsTable[] =
 	[EFFECT_FLAREEXPLODE]     = {SOUNDBANK_MAIN   , "flareexplode"    , 3000, 0	},
 	[EFFECT_DARTWOOSH]        = {SOUNDBANK_MAIN   , "dartwoosh"       , 3000, 0	},
 	[EFFECT_ATOMCHIME]        = {SOUNDBANK_MAIN   , "atomchime"       , 3000, 0	},
-	[EFFECT_PLAYERCLANG]      = {SOUNDBANK_MAIN   , "metalhit"        , 2000, kSoundFlag_Unique		},
+	[EFFECT_PLAYERCLANG]      = {SOUNDBANK_MAIN   , "playerclang"     , 2000, kSoundFlag_Unique		},
 	[EFFECT_THROWNSWOOSH]     = {SOUNDBANK_MAIN   , "thrownswoosh"    , 4000, 0	},
 	[EFFECT_BEAMHUM]          = {SOUNDBANK_MAIN   , "beamhum"         , 1500, 0	},
 	[EFFECT_JUMP]             = {SOUNDBANK_MAIN   , "jump"            , 1000, 0	},
@@ -172,6 +171,7 @@ static const EffectDef kEffectsTable[] =
 	[EFFECT_FREEZEPOOF]       = {SOUNDBANK_MAIN   , "freezepoof"      , 300 , 0	},
 	[EFFECT_CHANGEWEAPON]     = {SOUNDBANK_MAIN   , "changeweapon"    , 300 , 0	},
 	[EFFECT_MENUCHANGE]       = {SOUNDBANK_MAIN   , "menuchange"      , 1200, 0	},
+	[EFFECT_GIANTFOOTSTEP]    = {SOUNDBANK_MAIN   , "giantfootstep"   , 1500, 0	},
 
 	[EFFECT_LOGOAMBIENCE]     = {SOUNDBANK_MENU   , "ambience"        , 1200, 0	},
 	[EFFECT_ACCENTDRONE1]     = {SOUNDBANK_MENU   , "accentdrone1"    , 1200, 0	},
@@ -184,8 +184,8 @@ static const EffectDef kEffectsTable[] =
 
 	[EFFECT_POPCORN]          = {SOUNDBANK_FARM   , "popcornpop"      , 2000, 0	},
 	[EFFECT_SHOOTCORN]        = {SOUNDBANK_FARM   , "shootcorn"       , 2000, 0	},
-	[EFFECT_METALGATEHIT]     = {SOUNDBANK_FARM   , "metalhit"        , 3000, 0	},
-	[EFFECT_METALGATECRASH]   = {SOUNDBANK_FARM   , "metalcrash"      , 3000, 0	},
+	[EFFECT_METALGATEHIT]     = {SOUNDBANK_FARM   , "metalgatehit"    , 3000, 0	},
+	[EFFECT_METALGATECRASH]   = {SOUNDBANK_FARM   , "metalgatecrash"  , 3000, 0	},
 	[EFFECT_TRACTOR]          = {SOUNDBANK_FARM   , "tractor"         , 2000, 0	},
 	[EFFECT_ONIONSWOOSH]      = {SOUNDBANK_FARM   , "onionswoosh"     , 2000, 0	},
 	[EFFECT_WOODGATECRASH]    = {SOUNDBANK_FARM   , "woodgatesmash"   , 3000, 0	},
@@ -247,7 +247,6 @@ static const EffectDef kEffectsTable[] =
 	[EFFECT_FIREBREATH]       = {SOUNDBANK_JUNGLE , "firebreath"      , 2000, 0	},
 	[EFFECT_LIZARDINHALE]     = {SOUNDBANK_JUNGLE , "inhale"          , 3000, 0	},
 	[EFFECT_MANTISSPIT]       = {SOUNDBANK_JUNGLE , "spit"            , 2000, 0	},
-	[EFFECT_GIANTFOOTSTEP]    = {SOUNDBANK_JUNGLE , "giantfootstep"   , 1500, 0	},
 	[EFFECT_BIGDOORSMASH]     = {SOUNDBANK_JUNGLE , "bigdoorsmash"    , 2000, 0	},
 	[EFFECT_TRACTORBEAM]      = {SOUNDBANK_JUNGLE , "tractorbeam"     , 2000, 0	},
 	[EFFECT_PITCHERPAIN]      = {SOUNDBANK_JUNGLE , "pitcherpain"     , 5000, 0	},
@@ -544,6 +543,10 @@ OSErr err;
 	loadedSound->sndHandle = Pomme_SndLoadFileAsResource(refNum);
 	GAME_ASSERT_MESSAGE(loadedSound->sndHandle, path);
 
+			/* CLOSE FILE */
+
+	FSClose(refNum);
+
 			/* GET OFFSET INTO IT */
 
 	GetSoundHeaderOffset(loadedSound->sndHandle, &loadedSound->sndOffset);
@@ -614,7 +617,6 @@ void DisposeSoundBank(int bankNum)
 void StopAChannel(short *channelNum)
 {
 SndCommand 	mySndCmd;
-OSErr 		myErr;
 //SCStatus	theStatus;
 short		c = *channelNum;
 
@@ -628,12 +630,12 @@ short		c = *channelNum;
 		mySndCmd.cmd = flushCmd;
 		mySndCmd.param1 = 0;
 		mySndCmd.param2 = 0;
-		myErr = SndDoImmediate(gSndChannel[c], &mySndCmd);
+		SndDoImmediate(gSndChannel[c], &mySndCmd);
 
 		mySndCmd.cmd = quietCmd;
 		mySndCmd.param1 = 0;
 		mySndCmd.param2 = 0;
-		myErr = SndDoImmediate(gSndChannel[c], &mySndCmd);
+		SndDoImmediate(gSndChannel[c], &mySndCmd);
 	}
 
 	*channelNum = -1;
@@ -648,7 +650,6 @@ short		c = *channelNum;
 void StopAChannelIfEffectNum(short *channelNum, short effectNum)
 {
 SndCommand 	mySndCmd;
-OSErr 		myErr;
 //SCStatus	theStatus;
 short		c = *channelNum;
 
@@ -666,12 +667,12 @@ short		c = *channelNum;
 		mySndCmd.cmd = flushCmd;
 		mySndCmd.param1 = 0;
 		mySndCmd.param2 = 0;
-		myErr = SndDoImmediate(gSndChannel[c], &mySndCmd);
+		SndDoImmediate(gSndChannel[c], &mySndCmd);
 
 		mySndCmd.cmd = quietCmd;
 		mySndCmd.param1 = 0;
 		mySndCmd.param2 = 0;
-		myErr = SndDoImmediate(gSndChannel[c], &mySndCmd);
+		SndDoImmediate(gSndChannel[c], &mySndCmd);
 	}
 
 	*channelNum = -1;
@@ -762,16 +763,15 @@ static const float	volumeTweaks[NUM_SONGS] =
 			/* OPEN APPROPRIATE AIFF FILE */
 			/******************************/
 
-	{
-		FSSpec spec;
-		OSErr iErr;
+	short musicFileRefNum = -1;
+	FSSpec spec;
+	OSErr iErr;
 
-		iErr = FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, songNames[songNum], &spec);
-		GAME_ASSERT(!iErr);
+	iErr = FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, songNames[songNum], &spec);
+	GAME_ASSERT(!iErr);
 
-		iErr = FSpOpenDF(&spec, fsRdPerm, &gMusicFileRefNum);
-		GAME_ASSERT(!iErr);
-	}
+	iErr = FSpOpenDF(&spec, fsRdPerm, &musicFileRefNum);
+	GAME_ASSERT(!iErr);
 
 	gCurrentSong = songNum;
 
@@ -801,9 +801,9 @@ static const float	volumeTweaks[NUM_SONGS] =
 
 			/* START PLAYING FROM FILE */
 
-	OSErr iErr = SndStartFilePlay(
+	iErr = SndStartFilePlay(
 			gMusicChannel,
-			gMusicFileRefNum,
+			musicFileRefNum,
 			0,
 			/*STREAM_BUFFER_SIZE*/0,
 			/*gMusicBuffer*/nil,
@@ -812,6 +812,8 @@ static const float	volumeTweaks[NUM_SONGS] =
 			true);
 	GAME_ASSERT(!iErr);
 	gSongPlayingFlag = true;
+
+	FSClose(musicFileRefNum);		// close the file (Pomme decompresses entire song into memory)
 
 
 			/* SET VOLUME ON STREAM */
@@ -855,20 +857,6 @@ void KillSong(void)
 	gSongPlayingFlag = false;
 
 	SndStopFilePlay(gMusicChannel, true);
-
-	if (gMusicFileRefNum == 0x0ded)
-		DoAlert("KillSong: gMusicFileRefNum == 0x0ded");
-	else
-	{
-		OSErr iErr = FSClose(gMusicFileRefNum);							// close the file
-		if (iErr)
-		{
-			DoAlert("KillSong: FSClose failed!");
-			ShowSystemErr_NonFatal(iErr);
-		}
-	}
-
-	gMusicFileRefNum = 0x0ded;
 }
 
 /******************** TOGGLE MUSIC *********************/
@@ -882,7 +870,7 @@ void EnforceMusicPausePref(void)
 
 	SndChannelStatus(gMusicChannel, sizeof(SCStatus), &theStatus);	// get channel info
 
-	if (gGamePrefs.music != theStatus.scChannelBusy)
+	if (gGamePrefs.music == theStatus.scChannelPaused)
 		SndPauseFilePlay(gMusicChannel);
 }
 
@@ -899,7 +887,7 @@ void EnforceMusicPausePref(void)
 short PlayEffect3D(short effectNum, OGLPoint3D *where)
 {
 short					theChan;
-u_long					leftVol, rightVol;
+uint32_t					leftVol, rightVol;
 
 				/* CALC VOLUME */
 
@@ -925,10 +913,10 @@ u_long					leftVol, rightVol;
 // OUTPUT: channel # used to play sound
 //
 
-short PlayEffect_Parms3D(short effectNum, OGLPoint3D *where, u_long rateMultiplier, float volumeAdjust)
+short PlayEffect_Parms3D(short effectNum, OGLPoint3D *where, uint32_t rateMultiplier, float volumeAdjust)
 {
 short			theChan;
-u_long			leftVol, rightVol;
+uint32_t			leftVol, rightVol;
 
 				/* CALC VOLUME */
 
@@ -956,7 +944,7 @@ u_long			leftVol, rightVol;
 Boolean Update3DSoundChannel(short effectNum, short *channel, OGLPoint3D *where)
 {
 //SCStatus		theStatus;
-u_long			leftVol,rightVol;
+uint32_t			leftVol,rightVol;
 short			c;
 
 	c = *channel;
@@ -997,12 +985,12 @@ gone:
 
 /******************** CALC 3D EFFECT VOLUME *********************/
 
-static void Calc3DEffectVolume(short effectNum, OGLPoint3D *where, float volAdjust, u_long *leftVolOut, u_long *rightVolOut)
+static void Calc3DEffectVolume(short effectNum, OGLPoint3D *where, float volAdjust, uint32_t *leftVolOut, uint32_t *rightVolOut)
 {
 float	dist;
 float	refDist,volumeFactor;
-u_long	volume,left,right;
-u_long	maxLeft,maxRight;
+uint32_t	volume,left,right;
+uint32_t	maxLeft,maxRight;
 
 	dist 	= OGLPoint3D_Distance(where, &gEarCoords);		// calc dist to sound for pane 0
 
@@ -1139,13 +1127,13 @@ short PlayEffect(short effectNum)
 // OUTPUT: channel # used to play sound
 //
 
-short PlayEffect_Parms(int effectNum, u_long leftVolume, u_long rightVolume, unsigned long rateMultiplier)
+short PlayEffect_Parms(int effectNum, uint32_t leftVolume, uint32_t rightVolume, unsigned long rateMultiplier)
 {
 SndCommand 		mySndCmd;
 SndChannelPtr	chanPtr;
 short			theChan;
 OSErr			myErr;
-u_long			lv2,rv2;
+uint32_t			lv2,rv2;
 
 
 			/* GET BANK & SOUND #'S FROM TABLE */
@@ -1303,11 +1291,11 @@ void PauseAllChannels(Boolean pause)
 // Modifies the volume of a currently playing channel
 //
 
-void ChangeChannelVolume(short channel, u_long leftVol, u_long rightVol)
+void ChangeChannelVolume(short channel, uint32_t leftVol, uint32_t rightVol)
 {
 SndCommand 		mySndCmd;
 SndChannelPtr	chanPtr;
-u_long			lv2,rv2;
+uint32_t			lv2,rv2;
 
 	if (channel < 0)									// make sure it's valid
 		return;

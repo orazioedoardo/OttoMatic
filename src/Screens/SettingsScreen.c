@@ -28,9 +28,9 @@ static void cb_SetRumble(void)
 
 static void cb_ResetKeyBindings(void)
 {
-	for (int i = 0; i < NUM_CONTROL_NEEDS; i++)
+	for (int i = 0; i < NUM_REMAPPABLE_NEEDS; i++)
 	{
-		memcpy(gGamePrefs.keys[i].key, kDefaultKeyBindings[i].key, sizeof(gGamePrefs.keys[i].key));
+		memcpy(gGamePrefs.remappableKeys[i].key, kDefaultKeyBindings[i].key, sizeof(gGamePrefs.remappableKeys[i].key));
 	}
 
 	MyFlushEvents();
@@ -40,9 +40,9 @@ static void cb_ResetKeyBindings(void)
 
 static void cb_ResetPadBindings(void)
 {
-	for (int i = 0; i < NUM_CONTROL_NEEDS; i++)
+	for (int i = 0; i < NUM_REMAPPABLE_NEEDS; i++)
 	{
-		memcpy(gGamePrefs.keys[i].gamepad, kDefaultKeyBindings[i].gamepad, sizeof(gGamePrefs.keys[i].gamepad));
+		memcpy(gGamePrefs.remappableKeys[i].gamepad, kDefaultKeyBindings[i].gamepad, sizeof(gGamePrefs.remappableKeys[i].gamepad));
 	}
 
 	MyFlushEvents();
@@ -52,9 +52,9 @@ static void cb_ResetPadBindings(void)
 
 static void cb_ResetMouseBindings(void)
 {
-	for (int i = 0; i < NUM_CONTROL_NEEDS; i++)
+	for (int i = 0; i < NUM_REMAPPABLE_NEEDS; i++)
 	{
-		gGamePrefs.keys[i].mouseButton = kDefaultKeyBindings[i].mouseButton;
+		gGamePrefs.remappableKeys[i].mouseButton = kDefaultKeyBindings[i].mouseButton;
 	}
 
 	MyFlushEvents();
@@ -73,28 +73,30 @@ static const char* GenerateGamepadLabel(void)
 static uint8_t GenerateNumDisplays(void)
 {
 	int numDisplays = SDL_GetNumVideoDisplays();
-	return GAME_CLAMP(numDisplays, 1, 255);
-}
-
-static const char* GenerateVideoSettingsSubtitle(void)
-{
-	return (const char*) glGetString(GL_RENDERER);
+	return ClampInt(numDisplays, 1, 255);
 }
 
 static const char* GenerateDisplayName(char* buf, int bufSize, Byte value)
 {
-	snprintf(buf, bufSize,
-		"%s %d (%s)",
-		Localize(STR_DISPLAY),
-		1 + (int)value,
-		SDL_GetDisplayName(value));
-
+	snprintf(buf, bufSize, "%s %d", Localize(STR_DISPLAY), 1 + (int)value);
 	return buf;
 }
 
 static const char* GenerateCurrentLanguageName(char* buf, int bufSize, Byte value)
 {
 	return Localize(STR_LANGUAGE_NAME);
+}
+
+static void cb_ChangeAnaglyphMode(void)
+{
+	gAnaglyphPass = 0;
+	for (int i = 0; i < 4; i++)
+	{
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		glClearColor(0,0,0,1);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		SDL_GL_SwapWindow(gSDLWindow);
+	}
 }
 
 /***************************************************************/
@@ -256,112 +258,11 @@ static const MenuItem gMouseMenu[] =
 	{ .type = kMenuItem_END_SENTINEL }
 };
 
-static const MenuItem gVideoMenu[] =
-{
-	{.type = kMenuItem_Title, .text = STR_VIDEO_SETTINGS},
-	{.type = kMenuItem_Subtitle, .generateText = GenerateVideoSettingsSubtitle},
-	{ .type = kMenuItem_Spacer },
-
-	{
-		.type = kMenuItem_Cycler,
-		.text = STR_FULLSCREEN,
-		.cycler =
-		{
-			.callback = SetFullscreenModeFromPrefs,
-			.valuePtr = &gGamePrefs.fullscreen,
-			.numChoices = 2,
-			.choices = {STR_OFF, STR_ON},
-		},
-	},
-
-#if !(__APPLE__)	// hot-switching the preferred display if the game started as fullscreen is buggy on macOS for now
-	{
-		.type = kMenuItem_Cycler,
-		.text = STR_PREFERRED_DISPLAY,
-		.cycler =
-		{
-			.callback = SetFullscreenModeFromPrefs,
-			.valuePtr = &gGamePrefs.preferredDisplay,
-			.generateNumChoices = GenerateNumDisplays,
-			.generateChoiceString = GenerateDisplayName,
-		},
-	},
-#endif
-
-#if !(__APPLE__)
-	{
-		.type = kMenuItem_Cycler,
-		.text = STR_ANTIALIASING,
-		.cycler =
-		{
-			.valuePtr = &gGamePrefs.antialiasingLevel,
-			.numChoices = 4,
-			.choices = {STR_OFF, STR_MSAA_2X, STR_MSAA_4X, STR_MSAA_8X},
-		}
-	},
-#endif
-
-	{
-		.type = kMenuItem_Cycler,
-		.text = STR_ANAGLYPH,
-		.cycler =
-		{
-			.callback = NULL,
-			.valuePtr = &gGamePrefs.anaglyph,
-			.numChoices = 2,
-			.choices = {STR_OFF, STR_ON},
-		},
-	},
-
-	{ .type = kMenuItem_Spacer },
-
-	{
-		.type = kMenuItem_Action,
-		.text = STR_BACK,
-		.action = { .callback = MenuCallback_Back },
-	},
-
-	{ .type = kMenuItem_END_SENTINEL }
-};
-
 static const MenuItem gSettingsMenu[] =
 {
 	{.type = kMenuItem_Title, .text = STR_SETTINGS},
 	{.type = kMenuItem_Spacer},
 
-	{
-		.type = kMenuItem_Cycler,
-		.text = STR_LANGUAGE,
-		.cycler =
-		{
-			.callback = cb_SetLanguage,
-			.valuePtr = &gGamePrefs.language,
-			.numChoices = MAX_LANGUAGES,
-			.generateChoiceString = GenerateCurrentLanguageName,
-		},
-	},
-
-	{
-		.type = kMenuItem_Cycler,
-		.text = STR_MUSIC,
-		.cycler =
-		{
-			.callback = EnforceMusicPausePref,
-			.valuePtr = &gGamePrefs.music,
-			.numChoices = 2,
-			.choices = {STR_OFF, STR_ON},
-		},
-	},
-
-	{ .type = kMenuItem_Spacer },
-
-	{
-		.type = kMenuItem_Submenu,
-		.text = STR_VIDEO_SETTINGS,
-		.submenu = {.menu = gVideoMenu},
-	},
-
-	{ .type = kMenuItem_Spacer },
 
 	{
 		.type = kMenuItem_Submenu,
@@ -381,8 +282,32 @@ static const MenuItem gSettingsMenu[] =
 		.submenu = {.menu = gGamepadMenu},
 	},
 
+	{ .type = kMenuItem_Spacer },
+
+	{
+		.type = kMenuItem_Cycler,
+		.text = STR_MUSIC,
+		.cycler =
+		{
+			.callback = EnforceMusicPausePref,
+			.valuePtr = &gGamePrefs.music,
+			.numChoices = 2,
+			.choices = {STR_OFF, STR_ON},
+		},
+	},
+
+	{
+		.type = kMenuItem_Cycler,
+		.text = STR_AUTO_ALIGN_CAMERA,
+		.cycler =
+		{
+			.valuePtr = &gGamePrefs.autoAlignCamera,
+			.numChoices = 2,
+			.choices = {STR_OFF, STR_ON},
+		},
+	},
+
 #if _DEBUG
-	{.type = kMenuItem_Spacer},
 	{
 		.type = kMenuItem_Cycler,
 		.rawText = "Tank controls",
@@ -394,6 +319,114 @@ static const MenuItem gSettingsMenu[] =
 		},
 	},
 #endif
+
+	{ .type = kMenuItem_Spacer },
+
+	{
+		.type = kMenuItem_Cycler,
+		.text = STR_LANGUAGE,
+		.cycler =
+		{
+			.callback = cb_SetLanguage,
+			.valuePtr = &gGamePrefs.language,
+			.numChoices = MAX_LANGUAGES,
+			.generateChoiceString = GenerateCurrentLanguageName,
+		},
+	},
+
+	{
+		.type = kMenuItem_Cycler,
+		.text= STR_UI_CENTERING,
+		.cycler =
+		{
+			.valuePtr = &gGamePrefs.uiCentering,
+			.numChoices = 2,
+			.choices = {STR_OFF, STR_ON},
+		},
+	},
+	{
+		.type = kMenuItem_Cycler,
+		.text = STR_UI_SCALE,
+		.cycler =
+		{
+			.valuePtr = &gGamePrefs.uiScaleLevel,
+			.numChoices = NUM_UI_SCALE_LEVELS,
+			.choices =
+			{
+				STR_MOUSE_SENSITIVITY_1,
+				STR_MOUSE_SENSITIVITY_2,
+				STR_MOUSE_SENSITIVITY_3,
+				STR_MOUSE_SENSITIVITY_4,
+				STR_MOUSE_SENSITIVITY_5,
+				STR_MOUSE_SENSITIVITY_6,
+				STR_MOUSE_SENSITIVITY_7,
+				STR_MOUSE_SENSITIVITY_8,
+			},
+		},
+	},
+
+	{ .type = kMenuItem_Spacer },
+
+	{
+		.type = kMenuItem_Cycler,
+		.text = STR_FULLSCREEN,
+		.cycler =
+		{
+			.callback = SetFullscreenModeFromPrefs,
+			.valuePtr = &gGamePrefs.fullscreen,
+			.numChoices = 2,
+			.choices = {STR_OFF, STR_ON},
+		},
+	},
+
+	{
+		.type = kMenuItem_Cycler,
+		.text = STR_VSYNC,
+		.cycler =
+		{
+			.callback = SetFullscreenModeFromPrefs,
+			.valuePtr = &gGamePrefs.vsync,
+			.numChoices = 2,
+			.choices = {STR_OFF, STR_ON},
+		},
+	},
+
+	{
+		.type = kMenuItem_Cycler,
+		.text = STR_PREFERRED_DISPLAY,
+		.cycler =
+		{
+			.callback = SetFullscreenModeFromPrefs,
+			.valuePtr = &gGamePrefs.preferredDisplay,
+			.generateNumChoices = GenerateNumDisplays,
+			.generateChoiceString = GenerateDisplayName,
+		},
+	},
+
+#if !(__APPLE__)
+	{
+		.type = kMenuItem_Cycler,
+		.text = STR_ANTIALIASING,
+		.cycler =
+		{
+			.valuePtr = &gGamePrefs.antialiasingLevel,
+			.numChoices = 4,
+			.choices = {STR_OFF, STR_MSAA_2X, STR_MSAA_4X, STR_MSAA_8X},
+		}
+	},
+#endif
+
+	{
+		.type = kMenuItem_Cycler,
+		.text = STR_ANAGLYPH,
+		.cycler =
+		{
+			.callback = cb_ChangeAnaglyphMode,
+			.valuePtr = &gGamePrefs.anaglyphMode,
+			.numChoices = 3,
+			.choices = {STR_OFF, STR_ON_COLOR, STR_ON_MONOCHROME},
+		},
+	},
 
 	{ .type = kMenuItem_Spacer },
 
@@ -456,7 +489,7 @@ void DoSettingsOverlay(void (*updateRoutine)(void),
 	}
 
 	// If user changed anaglyph setting, show warning
-	if (gPreviousPrefs.anaglyph != gGamePrefs.anaglyph)
+	if (gPreviousPrefs.anaglyphMode != gGamePrefs.anaglyphMode)
 	{
 		StartMenu(kAnaglyphWarning, nil, updateRoutine, backgroundDrawRoutine);
 	}

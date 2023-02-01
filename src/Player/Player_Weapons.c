@@ -206,7 +206,9 @@ OGLMatrix4x4	m;
 
 	gTimeSinceLastShoot = 0;
 	gCameraUserRotY = 0;											// reset user rot see we can see where we're shooting
-	gForceCameraAlignment = true;
+
+	if (gGamePrefs.autoAlignCamera)
+		gForceCameraAlignment = true;
 
 		/* CALC COORD & VECTOR OF MUZZLE */
 
@@ -325,18 +327,23 @@ static const short weaponToModel[] =
 					/* MAKE IT FLY AWAY */
 
 			if (type == WEAPON_TYPE_GROWTH)			// special case the growth powerup
+			{
 				TossGrowthVial();
+			}
 			else
 			{
-				gNewObjectDefinition.group 		= MODEL_GROUP_GLOBAL;
-				gNewObjectDefinition.type 		= weaponToModel[type];
-				gNewObjectDefinition.coord		= gPlayerInfo.leftHandObj->Coord;
-				gNewObjectDefinition.flags 		= 0;
-				gNewObjectDefinition.slot 		= SLOT_OF_DUMB+1;
-				gNewObjectDefinition.moveCall 	= MoveDisposedWeapon;
-				gNewObjectDefinition.rot 		= gPlayerInfo.objNode->Rot.y;
-				gNewObjectDefinition.scale 		= gPlayerInfo.leftHandObj->Scale.x;
-				newObj = MakeNewDisplayGroupObject(&gNewObjectDefinition);
+				NewObjectDefinitionType def =
+				{
+					.group 		= MODEL_GROUP_GLOBAL,
+					.type 		= weaponToModel[type],
+					.coord		= gPlayerInfo.leftHandObj->Coord,
+					.flags 		= 0,
+					.slot 		= SLOT_OF_DUMB+1,
+					.moveCall 	= MoveDisposedWeapon,
+					.rot 		= gPlayerInfo.objNode->Rot.y,
+					.scale 		= gPlayerInfo.scaleRatio,
+				};
+				newObj = MakeNewDisplayGroupObject(&def);
 
 				newObj->Rot.x = -PI/2;
 				newObj->Delta.y = 600.0f;
@@ -347,7 +354,9 @@ static const short weaponToModel[] =
 			gPlayerInfo.holdingGun = false;
 		}
 		else
+		{
 			gPlayerInfo.wasHoldingGun = false;
+		}
 
 			/* CHANGE TO NEXT WEAPON IF ANY */
 
@@ -369,15 +378,27 @@ static void TossGrowthVial(void)
 float	r;
 ObjNode	*newObj;
 
-	gNewObjectDefinition.group 		= MODEL_GROUP_LEVELSPECIFIC;
-	gNewObjectDefinition.type 		= JUNGLE_ObjType_GrowthPOW;
-	gNewObjectDefinition.coord		= gPlayerInfo.leftHandObj->Coord;
-	gNewObjectDefinition.flags 		= 0;
-	gNewObjectDefinition.slot 		= SLOT_OF_DUMB+1;
-	gNewObjectDefinition.moveCall 	= MoveTossedGrowthVial;
-	gNewObjectDefinition.rot 		= 0;
-	gNewObjectDefinition.scale 		= .25;
-	newObj = MakeNewDisplayGroupObject(&gNewObjectDefinition);
+	NewObjectDefinitionType def =
+	{
+		.group		= MODEL_GROUP_GLOBAL,
+		.type		= GLOBAL_ObjType_GrowthHand,
+		.coord		= gPlayerInfo.leftHandObj->Coord,
+		.scale		= gPlayerInfo.scaleRatio,
+		.flags		= 0,
+		.slot		= SLOT_OF_DUMB+1,
+		.moveCall	= MoveTossedGrowthVial,
+		.rot		= 0,
+	};
+
+	if (gLevelNum == LEVEL_NUM_JUNGLE || gLevelNum == LEVEL_NUM_JUNGLEBOSS)
+	{
+		// We do have a better model of the vial for those levels
+		def.group = MODEL_GROUP_LEVELSPECIFIC;
+		def.type = JUNGLE_ObjType_GrowthPOW;
+		def.scale *= .25f;
+	}
+
+	newObj = MakeNewDisplayGroupObject(&def);
 
 	r = gPlayerInfo.objNode->Rot.y;
 	newObj->Delta.y = 600.0f;
@@ -401,7 +422,7 @@ float	fps = gFramesPerSecondFrac;
 	gCoord.y += gDelta.y * fps;
 	gCoord.z += gDelta.z * fps;
 
-	if (HandleCollisions(vial, CTYPE_MISC | CTYPE_TERRAIN | CTYPE_FENCE, 0))
+	if (ALL_SOLID_SIDES & HandleCollisions(vial, CTYPE_MISC | CTYPE_TERRAIN | CTYPE_FENCE, 0))
 	{
 		ExplodeGeometry(vial, 200, SHARD_MODE_BOUNCE|SHARD_MODE_FROMORIGIN, 1, .9);
 		PlayEffect3D(EFFECT_SHATTER, &vial->Coord);
@@ -988,7 +1009,7 @@ explode_weapon:
 static Boolean SeeIfDoPickup(ObjNode *player)
 {
 ObjNode *thisNode,*nearest;
-float	ex,ey,ez,dist,bestDist;
+float	bestDist;
 OGLVector2D	aim;
 short		anim;
 
@@ -1010,11 +1031,10 @@ short		anim;
 		if (thisNode->StatusBits & STATUS_BIT_HIDDEN)			// ... that are visible
 			goto next;
 
-		ex = thisNode->Coord.x;									// get coords
-		ey = thisNode->Coord.y;
-		ez = thisNode->Coord.z;
+		float ex = thisNode->Coord.x;							// get coords
+		float ez = thisNode->Coord.z;
 
-		dist = CalcDistance(gCoord.x, gCoord.z, ex, ez);
+		float dist = CalcDistance(gCoord.x, gCoord.z, ex, ez);
 		if ((dist < bestDist) && (dist < (170.0f * gPlayerInfo.scaleRatio)))			// see if best dist & close enough
 		{
 			bestDist = dist;
@@ -1035,6 +1055,7 @@ next:
 		gTargetPickup = nearest;
 
 		DisableHelpType(HELP_MESSAGE_PICKUPPOW);							// disable this help message since the player can now do it
+
 
 		switch(gTargetPickup->POWType)
 		{
@@ -1086,7 +1107,6 @@ next:
 static void StartSuperNovaCharge(ObjNode *player)
 {
 ObjNode	*newObj;
-int		i,j;
 
 	MorphToSkeletonAnim(player->Skeleton, PLAYER_ANIM_CHARGING, 4);
 
@@ -1109,15 +1129,23 @@ int		i,j;
 	gPlayerInfo.superNovaStatic = newObj;
 
 
+			/* CALC COORD OF LEFT & RIGHT ANTENNAE */
+
+	OGLPoint3D	antennaL, antennaR;
+
+	FindCoordOnJoint(gPlayerInfo.objNode, PLAYER_JOINT_HEAD, &antennaLOff, &antennaL);
+	FindCoordOnJoint(gPlayerInfo.objNode, PLAYER_JOINT_HEAD, &antennaROff, &antennaR);
+
+
 			/* CREATE ANTENNA GLOW */
 
-	for (j = 0; j < 2; j++)
+	for (int j = 0; j < 2; j++)
 	{
-		i = newObj->Sparkles[j] = GetFreeSparkle(newObj);				// get free sparkle slot
+		int i = newObj->Sparkles[j] = GetFreeSparkle(newObj);				// get free sparkle slot
 		if (i != -1)
 		{
 			gSparkles[i].flags = SPARKLE_FLAG_OMNIDIRECTIONAL;
-			gSparkles[i].where = newObj->Coord;
+			gSparkles[i].where = j==0? antennaL: antennaR;
 
 			gSparkles[i].color.r = 1;
 			gSparkles[i].color.g = 1;
@@ -1149,10 +1177,11 @@ OGLPoint3D	base;
 		/* GET RID OF STATIC */
 
 	novaObj = gPlayerInfo.superNovaStatic;
+
+	gPlayerInfo.superNovaStatic = NULL;
+
 	if (novaObj)
 	{
-		gPlayerInfo.superNovaStatic = nil;
-
 		for (j = 0; j < 2; j++)							// delete the sparkle objects
 		{
 			i = novaObj->Sparkles[j];
@@ -1213,7 +1242,7 @@ int	i,j,n;
 ObjNode *thisNode;
 float	dist,worstDist;
 int		count;
-u_long	ctype;
+uint32_t	ctype;
 				/* INIT THE LIST */
 
 	for (i = 0; i < MAX_SUPERNOVA_DISCHARGES; i++)

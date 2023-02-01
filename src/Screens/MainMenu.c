@@ -259,9 +259,9 @@ static OGLVector3D			fillDirection1 = { -1, 0, -1 };
 			/* SET ANAGLYPH INFO */
 			/*********************/
 
-	if (gGamePrefs.anaglyph)
+	if (gGamePrefs.anaglyphMode != ANAGLYPH_OFF)
 	{
-		if (!gGamePrefs.anaglyphColor)
+		if (gGamePrefs.anaglyphMode == ANAGLYPH_MONO)
 		{
 			viewDef.lights.ambientColor.r 		+= .1f;					// make a little brighter
 			viewDef.lights.ambientColor.g 		+= .1f;
@@ -275,8 +275,6 @@ static OGLVector3D			fillDirection1 = { -1, 0, -1 };
 
 	OGL_SetupWindow(&viewDef);
 
-
-	InitSparkles();
 
 				/************/
 				/* LOAD ART */
@@ -303,9 +301,12 @@ static OGLVector3D			fillDirection1 = { -1, 0, -1 };
 
 			/* LOAD SPRITES */
 
-	FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, ":Sprites:spheremap.sprites", &spec);
-	LoadSpriteFile(&spec, SPRITE_GROUP_SPHEREMAPS);
-	InitParticleSystem();
+	LoadSpriteGroup(SPRITE_GROUP_SPHEREMAPS, SPHEREMAP_SObjType_COUNT, "spheremap");
+	
+
+			/* INIT EFFECT SYSTEMS */
+	
+	InitEffects();
 
 
 			/* LOAD SKELETONS */
@@ -494,7 +495,7 @@ static void FreeMainMenuScreen(void)
 	DeleteAllObjects();
 	FreeAllSkeletonFiles(-1);
 	DisposeSoundBank(SOUNDBANK_MENU);
-	DisposeParticleSystem();
+	DisposeEffects();
 	DisposeAllSpriteGroups();
 	DisposeAllBG3DContainers();
 	OGL_DisposeWindowSetup();
@@ -1018,7 +1019,7 @@ ObjNode	*icon;
 static void CalcIconMatrix(ObjNode *theNode)
 {
 OGLMatrix4x4	m,m2,m3;
-float			r,s;
+float			s;
 
 				/* SET SCALE MATRIX */
 
@@ -1032,7 +1033,7 @@ float			r,s;
 
 			/* CALC LOCATION ON RIM */
 
-	r = PI + (theNode->Kind / NUM_SELECTIONS) * PI2;
+//	r = PI + (theNode->Kind / NUM_SELECTIONS) * PI2;
 	OGLMatrix4x4_SetTranslate(&m, theNode->Coord.x, theNode->Coord.y, theNode->Coord.z);
 	OGLMatrix4x4_Multiply(&m3, &m, &m2);
 
@@ -1751,7 +1752,7 @@ void DrawDarkenPane(ObjNode *theNode)
 	SetInfobarSpriteState(true);
 
 	glDisable(GL_TEXTURE_2D);
-	SetColor4fv((GLfloat *)&theNode->ColorFilter);
+	SetColor4fv(&theNode->ColorFilter.r);
 	glEnable(GL_BLEND);
 
 	glBegin(GL_QUADS);

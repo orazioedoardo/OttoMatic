@@ -1,5 +1,5 @@
 // OTTO MATIC ENTRY POINT
-// (C) 2021 Iliyas Jorio
+// (C) 2023 Iliyas Jorio
 // This file is part of Otto Matic. https://github.com/jorio/ottomatic
 
 #include <SDL.h>
@@ -72,16 +72,12 @@ tryAgain:
 	// Set data spec -- Lets the game know where to find its asset files
 	gDataSpec = Pomme::Files::HostPathToFSSpec(dataPath / "Skeletons");
 
-	// Use application resource file
-	auto applicationSpec = Pomme::Files::HostPathToFSSpec(dataPath / "System" / "Application");
-	short resFileRefNum = FSpOpenResFile(&applicationSpec, fsRdPerm);
-
-	if (resFileRefNum == -1)
+	FSSpec someDataFileSpec;
+	OSErr iErr = FSMakeFSSpec(gDataSpec.vRefNum, gDataSpec.parID, ":Skeletons:Otto.bg3d", &someDataFileSpec);
+	if (iErr)
 	{
 		goto tryAgain;
 	}
-
-	UseResFile(resFileRefNum);
 
 	return dataPath;
 }
@@ -89,20 +85,15 @@ tryAgain:
 static void ParseCommandLine(int argc, char** argv)
 {
 	memset(&gCommandLine, 0, sizeof(gCommandLine));
-	gCommandLine.vsync = 1;
 
 	for (int i = 1; i < argc; i++)
 	{
 		std::string argument = argv[i];
 
 		if (argument == "--skip-fluff")
+		{
 			gCommandLine.skipFluff = true;
-		else if (argument == "--no-vsync")
-			gCommandLine.vsync = 0;
-		else if (argument == "--vsync")
-			gCommandLine.vsync = 1;
-		else if (argument == "--adaptive-vsync")
-			gCommandLine.vsync = -1;
+		}
 		else if (argument == "--fullscreen-resolution")
 		{
 			GAME_ASSERT_MESSAGE(i + 2 < argc, "fullscreen width & height unspecified");
@@ -139,14 +130,18 @@ static void GetInitialWindowSize(int display, int& width, int& height)
 	}
 }
 
-static void Boot(const char* executablePath)
+static void Boot(int argc, char** argv)
 {
+	const char* executablePath = argc > 0 ? argv[0] : NULL;
+
 	// Start our "machine"
 	Pomme::Init();
 
 	// Load game prefs before starting
 	InitDefaultPrefs();
-	LoadPrefs(&gGamePrefs);
+	LoadPrefs();
+
+	ParseCommandLine(argc, argv);
 
 retryVideo:
 	// Initialize SDL video subsystem
@@ -212,7 +207,7 @@ retryVideo:
 		auto gamecontrollerdbPath8 = (dataPath / "System" / "gamecontrollerdb.txt").u8string();
 		if (-1 == SDL_GameControllerAddMappingsFromFile((const char*)gamecontrollerdbPath8.c_str()))
 		{
-			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_WARNING, "Billy Frontier", "Couldn't load gamecontrollerdb.txt!", gSDLWindow);
+			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_WARNING, "Otto Matic", "Couldn't load gamecontrollerdb.txt!", gSDLWindow);
 		}
 	}
 }
@@ -241,12 +236,9 @@ int main(int argc, char** argv)
 	std::string		finalErrorMessage		= "";
 	bool			showFinalErrorMessage	= false;
 
-	const char* executablePath = argc > 0 ? argv[0] : NULL;
-
 	try
 	{
-		ParseCommandLine(argc, argv);
-		Boot(executablePath);
+		Boot(argc, argv);
 		GameMain();
 	}
 	catch (Pomme::QuitRequest&)

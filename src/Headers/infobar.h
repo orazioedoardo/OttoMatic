@@ -2,6 +2,9 @@
 // infobar.h
 //
 
+#define NUM_UI_SCALE_LEVELS	8
+#define DEFAULT_UI_SCALE_LEVEL 5
+
 #define	HELP_BEACON_RANGE	500.0f
 
 
@@ -47,4 +50,4 @@ void DisableHelpType(short messNum);
 
 void DrawInfobarSprite2(float x, float y, float size, short group, short texNum);
 
-void SetInfobarSpriteState(bool centered);
+void SetInfobarSpriteState(bool setOriginToCenterOfScreen);

@@ -424,20 +424,20 @@ OGLPoint3D		pts[4];
 
 	glBegin(GL_QUADS);
 
-		if (MyRandomLong()&1)								// random flip
-		{
-			glTexCoord2f(0,1);	glVertex3fv((GLfloat *)&pts[0]);
-			glTexCoord2f(0,0);	glVertex3fv((GLfloat *)&pts[1]);
-			glTexCoord2f(1,0);	glVertex3fv((GLfloat *)&pts[2]);
-			glTexCoord2f(1,1);	glVertex3fv((GLfloat *)&pts[3]);
-		}
-		else
-		{
-			glTexCoord2f(0,0);	glVertex3fv((GLfloat *)&pts[0]);
-			glTexCoord2f(0,1);	glVertex3fv((GLfloat *)&pts[1]);
-			glTexCoord2f(1,1);	glVertex3fv((GLfloat *)&pts[2]);
-			glTexCoord2f(1,0);	glVertex3fv((GLfloat *)&pts[3]);
-		}
+	if (MyRandomLong()&1)								// random flip
+	{
+		glTexCoord2f(0,1);	glVertex3fv(&pts[0].x);
+		glTexCoord2f(0,0);	glVertex3fv(&pts[1].x);
+		glTexCoord2f(1,0);	glVertex3fv(&pts[2].x);
+		glTexCoord2f(1,1);	glVertex3fv(&pts[3].x);
+	}
+	else
+	{
+		glTexCoord2f(0,0);	glVertex3fv(&pts[0].x);
+		glTexCoord2f(0,1);	glVertex3fv(&pts[1].x);
+		glTexCoord2f(1,1);	glVertex3fv(&pts[2].x);
+		glTexCoord2f(1,0);	glVertex3fv(&pts[3].x);
+	}
 
 	glEnd();
 
@@ -528,13 +528,11 @@ float	fps = gFramesPerSecondFrac;
 
 	if (gNumPortalsBlown >= NUM_BRAIN_PORTALS)
 	{
-		float	angle,r;
-
 				/* TURN AND MOVE */
 
-		angle = TurnObjectTowardTarget(core, &gCoord, gPlayerInfo.coord.x, gPlayerInfo.coord.z, 1.0, false);
+		TurnObjectTowardTarget(core, &gCoord, gPlayerInfo.coord.x, gPlayerInfo.coord.z, 1.0, false);
 
-		r = core->Rot.y;
+		float r = core->Rot.y;
 		gDelta.x = -sin(r) * BRAINBOSS_SPEED;
 		gDelta.z = -cos(r) * BRAINBOSS_SPEED;
 
@@ -550,7 +548,6 @@ float	fps = gFramesPerSecondFrac;
 				/* UPDATE DEFORMATION COORDS */
 
 		UpdateDeformationCoords(gBrainBossDeformation, gCoord.x, gCoord.z);
-
 	}
 
 

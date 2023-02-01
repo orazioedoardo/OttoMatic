@@ -1,7 +1,8 @@
 /****************************/
 /*      MISC ROUTINES       */
-/* (c)2002 Pangea Software  */
 /* By Brian Greenstone      */
+/* (c)2002 Pangea Software  */
+/* (c)2023 Iliyas Jorio     */
 /****************************/
 
 
@@ -10,12 +11,16 @@
 /***************/
 
 #include "game.h"
+#include <stdio.h>
+#include <stdarg.h>
+
 
 /****************************/
 /*    CONSTANTS             */
 /****************************/
 
-#define	DEFAULT_FPS			10
+#define	MIN_FPS				15			// Platform physics are unstable under 15 FPS
+#define MAX_FPS				500
 
 /**********************/
 /*     VARIABLES      */
@@ -24,7 +29,7 @@
 short	gPrefsFolderVRefNum;
 long	gPrefsFolderDirID;
 
-u_long 	seed0 = 0, seed1 = 0, seed2 = 0;
+static uint32_t seed0 = 0x2a80ce30, seed1 = 0, seed2 = 0;
 
 float	gFramesPerSecond, gFramesPerSecondFrac;
 
@@ -35,77 +40,39 @@ float	gFramesPerSecond, gFramesPerSecondFrac;
 /**********************/
 
 
-/****************** DO SYSTEM ERROR ***************/
-
-void ShowSystemErr(long err)
-{
-Str255		numStr;
-
-	Enter2D();
-
-	snprintf(numStr, sizeof(numStr), "System error: %ld", err);
-	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Otto Matic", numStr, gSDLWindow);
-
-	Exit2D();
-
-	CleanQuit();
-}
-
-/****************** DO SYSTEM ERROR : NONFATAL ***************/
-//
-// nonfatal
-//
-void ShowSystemErr_NonFatal(long err)
-{
-Str255		numStr;
-
-	Enter2D();
-
-	snprintf(numStr, sizeof(numStr), "System error (non-fatal): %ld", err);
-	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Otto Matic", numStr, gSDLWindow);
-
-	Exit2D();
-}
-
 
 /*********************** DO ALERT *******************/
 
-void DoAlert(const char* s)
+void DoAlert(const char* format, ...)
 {
 	Enter2D();
 
-	printf("OTTO MATIC Alert: %s\n", s);
-	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Otto Matic", s, gSDLWindow);
+	char message[1024];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(message, sizeof(message), format, args);
+	va_end(args);
 
-	Exit2D();
-	SDL_ShowCursor(0);
+	printf("OTTO MATIC ALERT: %s\n", message);
+	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Otto Matic", message, gSDLWindow);
 }
 
 
 /*********************** DO FATAL ALERT *******************/
 
-void DoFatalAlert(const char* s)
+void DoFatalAlert(const char* format, ...)
 {
-	Enter2D();
+	if (gSDLWindow)
+		SDL_SetWindowFullscreen(gSDLWindow, 0);
 
-	printf("OTTO MATIC Fatal Alert: %s\n", s);
-	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Otto Matic", s, gSDLWindow);
+	char message[1024];
+	va_list args;
+	va_start(args, format);
+	vsnprintf(message, sizeof(message), format, args);
+	va_end(args);
 
-	Exit2D();
-	CleanQuit();
-}
-
-
-/*********************** DO ASSERT *******************/
-
-void DoAssert(const char* msg, const char* file, int line)
-{
-	Enter2D();
-	printf("GAME ASSERTION FAILED: %s - %s:%d\n", msg, file, line);
-	static char alertbuf[1024];
-	snprintf(alertbuf, 1024, "%s\n%s:%d", msg, file, line);
-	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Otto Matic: Assertion Failed!", alertbuf, /*gSDLWindow*/ nil);
-	Exit2D();
+	printf("OTTO MATIC FATAL ALERT: %s\n", message);
+	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Otto Matic", message, gSDLWindow);
 	ExitToShell();
 }
 
@@ -134,8 +101,6 @@ static Boolean	beenHere = false;
 		TextMesh_DisposeMetrics();
 	}
 
-	UseResFile(gMainAppRezFile);
-
 	SDL_ShowCursor(1);
 	MyFlushEvents();
 
@@ -158,7 +123,7 @@ static Boolean	beenHere = false;
 //		without the 0xffff at the end.
 //
 
-unsigned long MyRandomLong(void)
+uint32_t MyRandomLong(void)
 {
   return seed2 ^= (((seed1 ^= (seed2>>5)*1568397607UL)>>7)+
                    (seed0 = (seed0+1)*3141592621UL))*2435386481UL;
@@ -170,10 +135,10 @@ unsigned long MyRandomLong(void)
 // THE RANGE *IS* INCLUSIVE OF MIN AND MAX
 //
 
-u_short	RandomRange(unsigned short min, unsigned short max)
+uint16_t	RandomRange(unsigned short min, unsigned short max)
 {
-u_short		qdRdm;											// treat return value as 0-65536
-u_long		range, t;
+uint16_t		qdRdm;											// treat return value as 0-65536
+uint32_t		range, t;
 
 	qdRdm = MyRandomLong();
 	range = max+1 - min;
@@ -240,19 +205,9 @@ float RandomFloatRange(float a, float b)
 
 /**************** SET MY RANDOM SEED *******************/
 
-void SetMyRandomSeed(unsigned long seed)
+void SetMyRandomSeed(uint32_t seed)
 {
 	seed0 = seed;
-	seed1 = 0;
-	seed2 = 0;
-
-}
-
-/**************** INIT MY RANDOM SEED *******************/
-
-void InitMyRandomSeed(void)
-{
-	seed0 = 0x2a80ce30;
 	seed1 = 0;
 	seed2 = 0;
 }
@@ -271,57 +226,6 @@ int PositiveModulo(int value, unsigned int m)
 }
 
 #pragma mark -
-
-/****************** ALLOC HANDLE ********************/
-
-Handle	AllocHandle(long size)
-{
-Handle	hand;
-OSErr	err;
-
-	hand = NewHandle(size);							// alloc in APPL
-	if (hand == nil)
-	{
-		DoAlert("AllocHandle: using temp mem");
-		hand = TempNewHandle(size,&err);			// try TEMP mem
-		if (hand == nil)
-		{
-			DoAlert("AllocHandle: failed!");
-			return(nil);
-		}
-		else
-			return(hand);
-	}
-	return(hand);
-
-}
-
-
-
-/****************** ALLOC PTR ********************/
-
-void *AllocPtr(long size)
-{
-	return NewPtr(size);
-}
-
-
-/****************** ALLOC PTR CLEAR ********************/
-
-void *AllocPtrClear(long size)
-{
-	return NewPtrClear(size);
-}
-
-
-/***************** SAFE DISPOSE PTR ***********************/
-
-void SafeDisposePtr(Ptr ptr)
-{
-	DisposePtr(ptr);
-}
-
-
 
 /******************* CHECK PREFERENCES FOLDER ******************/
 
@@ -342,74 +246,69 @@ long		createdDirID;
 }
 
 
-/******************** REGULATE SPEED ***************/
-
-void RegulateSpeed(short fps)
-{
-u_long	n;
-static u_long oldTick = 0;
-
-	n = 60 / fps;
-	while ((TickCount() - oldTick) < n) {}			// wait for n ticks
-	oldTick = TickCount();							// remember current time
-}
-
-
 /************** CALC FRAMES PER SECOND *****************/
-//
-// This version uses UpTime() which is only available on PCI Macs.
-//
 
 void CalcFramesPerSecond(void)
 {
-	static UnsignedWide time;
-	UnsignedWide currTime;
-	unsigned long deltaTime;
+	static uint64_t performanceFrequency = 0;
+	static uint64_t prevTime = 0;
+	uint64_t currTime;
+
+	if (performanceFrequency == 0)
+	{
+		performanceFrequency = SDL_GetPerformanceFrequency();
+	}
 
 slow_down:
-	Microseconds(&currTime);
-	deltaTime = currTime.lo - time.lo;
+	currTime = SDL_GetPerformanceCounter();
+	uint64_t deltaTime = currTime - prevTime;
 
-	gFramesPerSecond = 1000000.0f / deltaTime;
+	if (deltaTime <= 0)
+	{
+		gFramesPerSecond = MIN_FPS;						// avoid divide by 0
+	}
+	else
+	{
+		gFramesPerSecond = performanceFrequency / (float)(deltaTime);
 
-#if 0
-AbsoluteTime currTime,deltaTime;
-static AbsoluteTime time = {0,0};
-Nanoseconds	nano;
+		if (gFramesPerSecond > MAX_FPS)					// keep from going over 100fps (there were problems in 2.0 of frame rate precision loss)
+		{
+			if (gFramesPerSecond - MAX_FPS > 1000)		// try to sneak in some sleep if we have 1 ms to spare
+			{
+				SDL_Delay(1);
+			}
+			goto slow_down;
+		}
 
-slow_down:
-	currTime = UpTime();
+		if (gFramesPerSecond < MIN_FPS)					// (avoid divide by 0's later)
+		{
+			gFramesPerSecond = MIN_FPS;
+		}
+	}
 
-	deltaTime = SubAbsoluteFromAbsolute(currTime, time);
-	nano = AbsoluteToNanoseconds(deltaTime);
-
-	gFramesPerSecond = 1000000.0f / (float)nano.lo;
-	gFramesPerSecond *= 1000.0f;
-#endif
-
-	if (gFramesPerSecond > 100)					// keep from going over 100fps (there were problems in 2.0 of frame rate precision loss)
-		goto slow_down;
-
-	if (gFramesPerSecond < DEFAULT_FPS)			// (avoid divide by 0's later)
-		gFramesPerSecond = DEFAULT_FPS;
-
-	if (GetKeyState(SDL_SCANCODE_GRAVE) && GetKeyState(SDL_SCANCODE_KP_PLUS))		// debug speed-up with `+KP_PLUS
-		gFramesPerSecond = 10;
-
+	// In debug builds, speed up with BACKTICK+KP_PLUS or LT on gamepad
 #if _DEBUG
-	if (gSDLController)
+	if (GetKeyState(SDL_SCANCODE_KP_PLUS))
+#else
+	if (GetKeyState(SDL_SCANCODE_GRAVE) && GetKeyState(SDL_SCANCODE_KP_PLUS))
+#endif
+	{
+		gFramesPerSecond = MIN_FPS;
+	}
+#if _DEBUG
+	else if (gSDLController)
 	{
 		float analogSpeedUp = SDL_GameControllerGetAxis(gSDLController, SDL_CONTROLLER_AXIS_TRIGGERLEFT) / 32767.0f;
 		if (analogSpeedUp > .25f)
-			gFramesPerSecond = 10;
+		{
+			gFramesPerSecond = MIN_FPS;
+		}
 	}
 #endif
 
-	gFramesPerSecondFrac = 1.0f/gFramesPerSecond;		// calc fractional for multiplication
+	gFramesPerSecondFrac = 1.0f / gFramesPerSecond;		// calc fractional for multiplication
 
-//printf("FPS: %f\n", gFramesPerSecond);
-
-	time = currTime;	// reset for next time interval
+	prevTime = currTime;								// reset for next time interval
 }
 
 
@@ -451,7 +350,7 @@ void MyFlushEvents(void)
 
 /********************* SWIZZLE SHORT **************************/
 
-int16_t SwizzleShort(int16_t *shortPtr)
+int16_t SwizzleShort(const int16_t *shortPtr)
 {
 int16_t	theShort = *shortPtr;
 
@@ -469,7 +368,7 @@ int16_t	theShort = *shortPtr;
 
 /********************* SWIZZLE USHORT **************************/
 
-uint16_t SwizzleUShort(uint16_t *shortPtr)
+uint16_t SwizzleUShort(const uint16_t *shortPtr)
 {
 uint16_t	theShort = *shortPtr;
 
@@ -488,7 +387,7 @@ uint16_t	theShort = *shortPtr;
 
 /********************* SWIZZLE LONG **************************/
 
-int32_t SwizzleLong(int32_t *longPtr)
+int32_t SwizzleLong(const int32_t *longPtr)
 {
 int32_t	theLong = *longPtr;
 
@@ -509,7 +408,7 @@ int32_t	theLong = *longPtr;
 
 /********************* SWIZZLE U LONG **************************/
 
-uint32_t SwizzleULong(uint32_t *longPtr)
+uint32_t SwizzleULong(const uint32_t *longPtr)
 {
 uint32_t	theLong = *longPtr;
 
@@ -531,7 +430,7 @@ uint32_t	theLong = *longPtr;
 
 /********************* SWIZZLE U LONG **************************/
 
-uint64_t SwizzleULong64(uint64_t *u64Ptr)
+uint64_t SwizzleULong64(const uint64_t *u64Ptr)
 {
 	uint64_t	u64 = *u64Ptr;
 
@@ -564,14 +463,15 @@ uint64_t SwizzleULong64(uint64_t *u64Ptr)
 
 /********************* SWIZZLE FLOAT **************************/
 
-float SwizzleFloat(float *floatPtr)
+float SwizzleFloat(const float *floatPtr)
 {
-float	*theFloat;
-uint32_t	bytes = SwizzleULong((uint32_t *)floatPtr);
+	const void* blob = floatPtr;
 
-	theFloat = (float *)&bytes;
+	uint32_t theLong = SwizzleULong((const uint32_t *) blob);
 
-	return(*theFloat);
+	blob = &theLong;
+
+	return *((const float *) blob);
 }
 
 

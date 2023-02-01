@@ -1,5 +1,5 @@
 // INPUT.C
-// (c)2021 Iliyas Jorio
+// (c)2023 Iliyas Jorio
 // This file is part of Otto Matic. https://github.com/jorio/ottomatic
 
 #include "game.h"
@@ -13,13 +13,15 @@
 
 enum
 {
-	KEYSTATE_OFF		= 0b00,
-	KEYSTATE_UP			= 0b01,
+	KEYSTATE_ACTIVE_BIT		= 0b001,
+	KEYSTATE_CHANGE_BIT		= 0b010,
+	KEYSTATE_IGNORE_BIT		= 0b100,
 
-	KEYSTATE_PRESSED	= 0b10,
-	KEYSTATE_HELD		= 0b11,
-
-	KEYSTATE_ACTIVE_BIT	= 0b10,
+	KEYSTATE_OFF			= 0b000,
+	KEYSTATE_PRESSED		= KEYSTATE_ACTIVE_BIT | KEYSTATE_CHANGE_BIT,
+	KEYSTATE_HELD			= KEYSTATE_ACTIVE_BIT,
+	KEYSTATE_UP				= KEYSTATE_OFF | KEYSTATE_CHANGE_BIT,
+	KEYSTATE_IGNOREHELD		= KEYSTATE_OFF | KEYSTATE_IGNORE_BIT,
 };
 
 #define kJoystickDeadZone				(33 * 32767 / 100)
@@ -37,32 +39,33 @@ enum
 /*     PROTOTYPES     */
 /**********************/
 
+typedef uint8_t KeyState;
+
 Boolean				gUserPrefersGamepad = false;
 
 SDL_GameController	*gSDLController = NULL;
-SDL_JoystickID		gSDLJoystickInstanceID = -1;		// ID of the joystick bound to gSDLController
+static SDL_JoystickID	gSDLJoystickInstanceID = -1;		// ID of the joystick bound to gSDLController
 
-Byte				gRawKeyboardState[SDL_NUM_SCANCODES];
+static KeyState		gMouseButtonState[NUM_SUPPORTED_MOUSE_BUTTONS + 2];
+static KeyState		gRawKeyboardState[SDL_NUM_SCANCODES];
+static KeyState		gNeedStates[NUM_CONTROL_NEEDS];
+
 char				gTextInput[SDL_TEXTINPUTEVENT_TEXT_SIZE];
 
-Byte				gNeedStates[NUM_CONTROL_NEEDS];
-
-Boolean				gEatMouse = false;
+static Boolean		gEatMouse = false;
 Boolean				gMouseMotionNow = false;
-static Byte			gMouseButtonState[NUM_SUPPORTED_MOUSE_BUTTONS + 2];
 
 OGLVector2D			gCameraControlDelta;
 
-
-static OGLVector2D GetThumbStickVector(bool rightStick);
 
 
 /**********************/
 /* STATIC FUNCTIONS   */
 /**********************/
 
+static OGLVector2D GetThumbStickVector(bool rightStick);
 
-static inline void UpdateKeyState(Byte* state, bool downNow)
+static inline void UpdateKeyState(KeyState* state, bool downNow)
 {
 	switch (*state)	// look at prev state
 	{
@@ -70,10 +73,15 @@ static inline void UpdateKeyState(Byte* state, bool downNow)
 		case KEYSTATE_PRESSED:
 			*state = downNow ? KEYSTATE_HELD : KEYSTATE_UP;
 			break;
+
 		case KEYSTATE_OFF:
 		case KEYSTATE_UP:
 		default:
 			*state = downNow ? KEYSTATE_PRESSED : KEYSTATE_OFF;
+			break;
+
+		case KEYSTATE_IGNOREHELD:
+			*state = downNow ? KEYSTATE_IGNOREHELD : KEYSTATE_OFF;
 			break;
 	}
 }
@@ -142,44 +150,44 @@ void UpdateInput(void)
 				}
 				break;
 
-				case SDL_TEXTINPUT:
-					memcpy(gTextInput, event.text.text, sizeof(gTextInput));
-					_Static_assert(sizeof(gTextInput) == sizeof(event.text.text), "size mismatch: gTextInput/event.text.text");
-					break;
+			case SDL_TEXTINPUT:
+				memcpy(gTextInput, event.text.text, sizeof(gTextInput));
+				_Static_assert(sizeof(gTextInput) == sizeof(event.text.text), "size mismatch: gTextInput/event.text.text");
+				break;
 
-				case SDL_MOUSEMOTION:
-					if (!gEatMouse)
-					{
-						gMouseMotionNow = true;
-						MouseSmoothing_OnMouseMotion(&event.motion);
-					}
-					break;
+			case SDL_MOUSEMOTION:
+				if (!gEatMouse)
+				{
+					gMouseMotionNow = true;
+					MouseSmoothing_OnMouseMotion(&event.motion);
+				}
+				break;
 
-				case SDL_MOUSEWHEEL:
-					if (!gEatMouse)
-					{
-						mouseWheelDelta += event.wheel.y;
-						mouseWheelDelta += event.wheel.x;
-					}
-					break;
+			case SDL_MOUSEWHEEL:
+				if (!gEatMouse)
+				{
+					mouseWheelDelta += event.wheel.y;
+					mouseWheelDelta += event.wheel.x;
+				}
+				break;
 
-				case SDL_JOYDEVICEADDED:	 // event.jdevice.which is the joy's INDEX (not an instance id!)
-					TryOpenController(false);
-					break;
+			case SDL_JOYDEVICEADDED:	 // event.jdevice.which is the joy's INDEX (not an instance id!)
+				TryOpenController(false);
+				break;
 
-				case SDL_JOYDEVICEREMOVED:	// event.jdevice.which is the joy's UNIQUE INSTANCE ID (not an index!)
-					OnJoystickRemoved(event.jdevice.which);
-					break;
+			case SDL_JOYDEVICEREMOVED:	// event.jdevice.which is the joy's UNIQUE INSTANCE ID (not an index!)
+				OnJoystickRemoved(event.jdevice.which);
+				break;
 
-				case SDL_KEYDOWN:
-					gUserPrefersGamepad = false;
-					break;
+			case SDL_KEYDOWN:
+				gUserPrefersGamepad = false;
+				break;
 
-				case SDL_CONTROLLERBUTTONDOWN:
-				case SDL_CONTROLLERBUTTONUP:
-				case SDL_JOYBUTTONDOWN:
-					gUserPrefersGamepad = true;
-					break;
+			case SDL_CONTROLLERBUTTONDOWN:
+			case SDL_CONTROLLERBUTTONUP:
+			case SDL_JOYBUTTONDOWN:
+				gUserPrefersGamepad = true;
+				break;
 		}
 	}
 
@@ -226,16 +234,29 @@ void UpdateInput(void)
 	}
 
 	// --------------------------------------------
+	// Parse Alt+Enter
+
+	if (GetNewKeyState(SDL_SCANCODE_RETURN)
+		&& (GetKeyState(SDL_SCANCODE_LALT) || GetKeyState(SDL_SCANCODE_RALT)))
+	{
+		gGamePrefs.fullscreen = gGamePrefs.fullscreen ? 0 : 1;
+		SetFullscreenModeFromPrefs();
+
+		gRawKeyboardState[SDL_SCANCODE_RETURN] = KEYSTATE_IGNOREHELD;
+	}
+
+	// --------------------------------------------
+	// Update need states
 
 	for (int i = 0; i < NUM_CONTROL_NEEDS; i++)
 	{
-		const KeyBinding* kb = &gGamePrefs.keys[i];
+		const KeyBinding* kb = (i < NUM_REMAPPABLE_NEEDS) ? &gGamePrefs.remappableKeys[i] : &kDefaultKeyBindings[i];
 
 		bool downNow = false;
 
 		for (int j = 0; j < KEYBINDING_MAX_KEYS; j++)
 			if (kb->key[j] && kb->key[j] < numkeys)
-				downNow |= 0 != keystate[kb->key[j]];
+				downNow |= gRawKeyboardState[kb->key[j]] & KEYSTATE_ACTIVE_BIT;
 
 		downNow |= gMouseButtonState[kb->mouseButton] & KEYSTATE_ACTIVE_BIT;
 
@@ -321,8 +342,8 @@ void UpdateInput(void)
 		float mouseDX = mdx * mouseSensitivityFrac * .1f;
 		float mouseDY = mdy * mouseSensitivityFrac * .1f;
 
-		mouseDX = GAME_CLAMP(mouseDX, -1.0f, 1.0f);					// keep values pinned
-		mouseDY = GAME_CLAMP(mouseDY, -1.0f, 1.0f);
+		mouseDX = ClampFloat(mouseDX, -1.0f, 1.0f);					// keep values pinned
+		mouseDY = ClampFloat(mouseDY, -1.0f, 1.0f);
 
 		if (fabsf(mouseDX) > fabsf(gPlayerInfo.analogControlX))		// is the mouse delta better than what we've got from the other devices?
 			gPlayerInfo.analogControlX = mouseDX;
@@ -352,6 +373,19 @@ void UpdateInput(void)
 
 	if (!gGamePrefs.mouseControlsOtto)
 		gCameraControlDelta.x -= mdx * mouseSensitivityFrac * 0.04f;
+
+
+	// --------------------------------------------
+
+			/*******************/
+			/* CHECK FOR CMD+Q */
+			/*******************/
+			// When in-game, take a different path (see PlayArea)
+
+	if ((!gIsInGame || gGamePaused) && IsCmdQPressed())
+	{
+		CleanQuit();
+	}
 }
 
 void CaptureMouse(Boolean doCapture)
@@ -382,7 +416,7 @@ Boolean GetNewKeyState(unsigned short sdlScanCode)
 
 Boolean GetKeyState(unsigned short sdlScanCode)
 {
-	return gRawKeyboardState[sdlScanCode] == KEYSTATE_PRESSED || gRawKeyboardState[sdlScanCode] == KEYSTATE_HELD;
+	return 0 != (gRawKeyboardState[sdlScanCode] & KEYSTATE_ACTIVE_BIT);
 }
 
 Boolean UserWantsOut(void)
@@ -412,6 +446,23 @@ Boolean FlushMouseButtonPress(uint8_t sdlButton)
 	if (gotPress)
 		gMouseButtonState[sdlButton] = KEYSTATE_HELD;
 	return gotPress;
+}
+
+Boolean IsCmdQPressed(void)
+{
+#if __APPLE__
+	return (GetKeyState(SDL_SCANCODE_LGUI) || GetKeyState(SDL_SCANCODE_RGUI))
+		&& GetNewKeyState(SDL_GetScancodeFromKey(SDLK_q));
+#else
+	// on non-mac systems, alt-f4 is handled by the system
+	return false;
+#endif
+}
+
+Boolean GetCheatKeyCombo(void)
+{
+	return (GetKeyState(SDL_SCANCODE_B) && GetKeyState(SDL_SCANCODE_R) && GetKeyState(SDL_SCANCODE_I))
+		|| (GetKeyState(SDL_SCANCODE_C) && GetKeyState(SDL_SCANCODE_M) && GetKeyState(SDL_SCANCODE_R));
 }
 
 #pragma mark -
