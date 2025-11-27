@@ -297,7 +297,7 @@ const Byte	cloud[] =
 	NewObjectDefinitionType titleDef =
 	{
 		.scale		= 1.00f,
-		.coord		= {-405, 200, 0},
+		.coord		= {-g2DLogicalWidth/2 + 20.0f, 200, 0},
 		.moveCall	= MoveLevelName,
 		.slot		= SPRITE_SLOT,
 	};
