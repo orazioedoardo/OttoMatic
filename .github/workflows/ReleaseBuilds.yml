@@ -58,7 +58,7 @@ jobs:
           compression-level: 0
 
   build-macos:
-    runs-on: macos-latest  # as of January 2025, this still supports the macOS 10.13 deployment target
+    runs-on: macos-15
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
