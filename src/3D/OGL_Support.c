@@ -12,6 +12,10 @@
 
 #include "game.h"
 
+#if __EMSCRIPTEN__
+#include <gl4esinit.h>
+#endif
+
 /****************************/
 /*    PROTOTYPES            */
 /****************************/
@@ -260,6 +264,11 @@ static void OGL_CreateDrawContext(void)
 
 	gAGLContext = SDL_GL_CreateContext(gSDLWindow);
 	GAME_ASSERT_MESSAGE(gAGLContext, SDL_GetError());
+
+#if __EMSCRIPTEN__
+	initialize_gl4es();																// gl4es needs a live WebGL context
+#endif
+
 	GAME_ASSERT(glGetError() == GL_NO_ERROR);
 
 			/* ACTIVATE CONTEXT */
@@ -365,7 +374,7 @@ static void OGL_InitDrawContext(OGLViewDefType* viewDefPtr)
 	glClearColor(0,0,0, 1.0);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	glClear(GL_COLOR_BUFFER_BIT);
-	SDL_GL_SwapWindow(gSDLWindow);
+	SwapGameWindow();
 	glClear(GL_COLOR_BUFFER_BIT);
 	glClearColor(viewDefPtr->clearColor.r, viewDefPtr->clearColor.g, viewDefPtr->clearColor.b, 1.0);
 
@@ -509,7 +518,7 @@ void OGL_DrawScene(void (*drawRoutine)(void))
 	{
 		glClearColor(0, 0, 0, 1);
 		glClear(GL_COLOR_BUFFER_BIT);
-		SDL_GL_SwapWindow(gSDLWindow);					// end render loop
+		SwapGameWindow();					// end render loop
 		return;
 	}
 
@@ -744,7 +753,7 @@ do_anaglyph:
 
            /* SWAP THE BUFFS */
 
-	SDL_GL_SwapWindow(gSDLWindow);					// end render loop
+	SwapGameWindow();					// end render loop
 
 
 	if (gGamePrefs.anaglyphMode != ANAGLYPH_OFF)
@@ -1195,8 +1204,9 @@ void OGL_Texture_SetOpenGLTexture(GLuint textureName)
 	if (OGL_CheckError())
 		DoFatalAlert("OGL_Texture_SetOpenGLTexture: glBindTexture failed!");
 
-
+#if !(__EMSCRIPTEN__ && !_DEBUG)		// glGetError is a synchronous round trip to the GPU in the browser
 	glGetError();
+#endif
 
 	glEnable(GL_TEXTURE_2D);
 }
@@ -1369,6 +1379,7 @@ OGLLightDefType	*lights;
 
 /******************** OGL: CHECK ERROR ********************/
 
+#if !(__EMSCRIPTEN__ && !_DEBUG)		// see ogl_support.h
 GLenum _OGL_CheckError(const char* file, const int line)
 {
 	GLenum error = glGetError();
@@ -1380,6 +1391,7 @@ GLenum _OGL_CheckError(const char* file, const int line)
 	}
 	return error;
 }
+#endif
 
 
 

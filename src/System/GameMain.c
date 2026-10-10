@@ -122,7 +122,11 @@ void InitDefaultPrefs(void)
 	SDL_memset(&gGamePrefs, 0, sizeof(gGamePrefs));
 
 	gGamePrefs.language						= GetBestLanguageIDFromSystemLocale();
+#if __EMSCRIPTEN__
+	gGamePrefs.fullscreen					= false;	// stay inside the web page; the page does fullscreen
+#else
 	gGamePrefs.fullscreen					= true;
+#endif
 	gGamePrefs.vsync						= true;
 	gGamePrefs.uiCentering					= false;
 	gGamePrefs.uiScaleLevel					= DEFAULT_UI_SCALE_LEVEL;

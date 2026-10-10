@@ -219,6 +219,7 @@ void UpdateInput(void)
 	// --------------------------------------------
 	// Parse Alt+Enter
 
+#if !__EMSCRIPTEN__		// on the web, the page toggles fullscreen with Cmd+F
 	if (GetNewKeyState(SDL_SCANCODE_RETURN)
 		&& (GetKeyState(SDL_SCANCODE_LALT) || GetKeyState(SDL_SCANCODE_RALT)))
 	{
@@ -227,6 +228,7 @@ void UpdateInput(void)
 
 		gRawKeyboardState[SDL_SCANCODE_RETURN] = KEYSTATE_IGNOREHELD;
 	}
+#endif
 
 	// --------------------------------------------
 	// Update need states

@@ -107,6 +107,7 @@ typedef struct
 SkeletonDefType *LoadSkeletonFile(short skeletonType);
 OSErr LoadPrefs(void);
 void SavePrefs(void);
+void SyncPrefsFolder(void);
 
 void LoadPlayfield(FSSpec *specPtr);
 void LoadLevelArt(void);
