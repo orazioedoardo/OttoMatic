@@ -6,7 +6,7 @@
 
 #include "input.h"
 
-#define NUM_SAVE_SLOTS 12
+#define NUM_SAVE_SLOTS 10
 
 		/***********************/
 		/* RESOURCE STURCTURES */
