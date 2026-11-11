@@ -804,7 +804,6 @@ use_current:
 											case	MULTI_TEXTURE_COMBINE_ADD:
 													glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_COMBINE);
 													glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_RGB, GL_ADD);
-													glTexEnvi(GL_TEXTURE_ENV, GL_COMBINE_ALPHA, GL_MODULATE);	// OpenGL's default, but gl4es starts it as GL_REPLACE, which loses the model's alpha
 													break;
 										}
 
